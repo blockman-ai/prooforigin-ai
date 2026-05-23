@@ -2,9 +2,9 @@ filename,label,source,detector_score,human_feedback,final_label
 file_000000007a54722fb6a6bcc9531bdc23.png,ai_generated,chatgpt,1.0,confirmed,confirmed_ai
 file_000000001e60722fa53b3f1a0765d4ad.png,ai_generated,chatgpt,1.0,confirmed,confirmed_ai
 file_000000005104722f8e3bc2fadd105eb4.png,ai_generated,chatgpt,1.0,confirmed,confirmed_ai
-GoArt_1682990090984.jpg,ai_generated,goart,1.0,confirmed,confirmed_ai
-GoArt_1682989843352.jpg,ai_generated,goart,1.0,confirmed,confirmed_ai
-GoArt_1682989954083.jpg,ai_generated,goart,1.0,confirmed,confirmed_ai
+GoArt_1682989843352.jpg,ai_generated,goart,1.0,none,confirmed_ai
+GoArt_1682989954083.jpg,ai_generated,goart,1.0,none,confirmed_ai
+GoArt_1682990023547.jpg,ai_generated,goart,1.0,none,confirmed_ai
 GoArt_1682990066454.jpg,ai_generated,goart,1.0,none,confirmed_ai
 GoArt_1682990090984.jpg,ai_generated,goart,1.0,none,confirmed_ai
 20260515_075656.heic,real,phone_camera,0.0,confirmed,confirmed_real
