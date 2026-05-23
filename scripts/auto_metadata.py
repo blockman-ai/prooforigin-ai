@@ -1,87 +1,75 @@
-import os
-import hashlib
+import csv
 from pathlib import Path
 
-from PIL import Image
-from pillow_heif import register_heif_opener
-
-register_heif_opener()
-
 RAW_DIR = Path("data/raw")
-PROCESSED_DIR = Path("data/processed")
+METADATA_FILE = Path("data/metadata/labels.csv")
 
-VALID_EXTENSIONS = {
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".webp",
-    ".heic"
+VALID_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
+
+FIELDNAMES = [
+    "filename",
+    "label",
+    "source",
+    "detector_score",
+    "human_feedback",
+    "final_label",
+]
+
+FINAL_LABELS = {
+    "real": "confirmed_real",
+    "ai_generated": "confirmed_ai",
+    "edited": "confirmed_edited",
+    "manipulated": "confirmed_manipulated",
+    "screenshot": "confirmed_screenshot",
 }
 
-TARGET_SIZE = (512, 512)
+def load_existing():
+    if not METADATA_FILE.exists():
+        return set(), []
 
-def generate_hash(filepath):
-    sha256 = hashlib.sha256()
+    with METADATA_FILE.open("r", newline="", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
+        rows = list(reader)
 
-    with open(filepath, "rb") as file:
-        for chunk in iter(lambda: file.read(8192), b""):
-            sha256.update(chunk)
-
-    return sha256.hexdigest()
-
-def process_image(input_path, output_path):
-    image = Image.open(input_path)
-
-    image = image.convert("RGB")
-
-    image.thumbnail(TARGET_SIZE)
-
-    canvas = Image.new("RGB", TARGET_SIZE, (0, 0, 0))
-
-    offset_x = (TARGET_SIZE[0] - image.width) // 2
-    offset_y = (TARGET_SIZE[1] - image.height) // 2
-
-    canvas.paste(image, (offset_x, offset_y))
-
-    canvas.save(output_path, quality=95)
+    existing = {row["filename"] for row in rows}
+    return existing, rows
 
 def main():
-    total = 0
-    errors = 0
+    METADATA_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    existing, rows = load_existing()
+    added = 0
 
     for label_dir in RAW_DIR.iterdir():
         if not label_dir.is_dir():
             continue
 
-        output_label_dir = PROCESSED_DIR / label_dir.name
-        output_label_dir.mkdir(parents=True, exist_ok=True)
+        label = label_dir.name
 
         for image_path in label_dir.iterdir():
             if image_path.suffix.lower() not in VALID_EXTENSIONS:
                 continue
 
-            try:
-                image_hash = generate_hash(image_path)
+            if image_path.name in existing:
+                continue
 
-                output_filename = f"{image_hash}.jpg"
+            rows.append({
+                "filename": image_path.name,
+                "label": label,
+                "source": "manual_upload",
+                "detector_score": "1.0" if label == "ai_generated" else "0.0",
+                "human_feedback": "confirmed",
+                "final_label": FINAL_LABELS.get(label, label),
+            })
 
-                output_path = output_label_dir / output_filename
+            added += 1
 
-                process_image(image_path, output_path)
+    with METADATA_FILE.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=FIELDNAMES)
+        writer.writeheader()
+        writer.writerows(rows)
 
-                total += 1
-
-                print(f"[OK] {image_path.name} -> {output_filename}")
-
-            except Exception as e:
-                errors += 1
-                print(f"[ERROR] {image_path.name}: {e}")
-
-    print("\n=== PREPROCESS COMPLETE ===")
-    print(f"Processed: {total}")
-    print(f"Errors: {errors}")
+    print(f"Metadata updated. Added {added} new files.")
 
 if __name__ == "__main__":
     main()
