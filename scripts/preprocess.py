@@ -1,57 +1,87 @@
 import os
 import hashlib
+from pathlib import Path
+
 from PIL import Image
+from pillow_heif import register_heif_opener
 
-RAW_DIR = "data/raw"
-PROCESSED_DIR = "data/processed"
+register_heif_opener()
 
-VALID_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"]
+RAW_DIR = Path("data/raw")
+PROCESSED_DIR = Path("data/processed")
 
-os.makedirs(PROCESSED_DIR, exist_ok=True)
+VALID_EXTENSIONS = {
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".heic"
+}
+
+TARGET_SIZE = (512, 512)
 
 def generate_hash(filepath):
-    with open(filepath, "rb") as f:
-        return hashlib.md5(f.read()).hexdigest()
+    sha256 = hashlib.sha256()
+
+    with open(filepath, "rb") as file:
+        for chunk in iter(lambda: file.read(8192), b""):
+            sha256.update(chunk)
+
+    return sha256.hexdigest()
 
 def process_image(input_path, output_path):
-    image = Image.open(input_path).convert("RGB")
-    image = image.resize((512, 512))
-    image.save(output_path, quality=95)
+    image = Image.open(input_path)
+
+    image = image.convert("RGB")
+
+    image.thumbnail(TARGET_SIZE)
+
+    canvas = Image.new("RGB", TARGET_SIZE, (0, 0, 0))
+
+    offset_x = (TARGET_SIZE[0] - image.width) // 2
+    offset_y = (TARGET_SIZE[1] - image.height) // 2
+
+    canvas.paste(image, (offset_x, offset_y))
+
+    canvas.save(output_path, quality=95)
 
 def main():
     total = 0
+    errors = 0
 
-    for label in os.listdir(RAW_DIR):
-        label_path = os.path.join(RAW_DIR, label)
+    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
-        if not os.path.isdir(label_path):
+    for label_dir in RAW_DIR.iterdir():
+        if not label_dir.is_dir():
             continue
 
-        output_label_dir = os.path.join(PROCESSED_DIR, label)
-        os.makedirs(output_label_dir, exist_ok=True)
+        output_label_dir = PROCESSED_DIR / label_dir.name
+        output_label_dir.mkdir(parents=True, exist_ok=True)
 
-        for filename in os.listdir(label_path):
-            ext = os.path.splitext(filename)[1].lower()
-
-            if ext not in VALID_EXTENSIONS:
+        for image_path in label_dir.iterdir():
+            if image_path.suffix.lower() not in VALID_EXTENSIONS:
                 continue
 
-            input_path = os.path.join(label_path, filename)
-
-            image_hash = generate_hash(input_path)
-
-            output_filename = f"{image_hash}.jpg"
-            output_path = os.path.join(output_label_dir, output_filename)
-
             try:
-                process_image(input_path, output_path)
+                image_hash = generate_hash(image_path)
+
+                output_filename = f"{image_hash}.jpg"
+
+                output_path = output_label_dir / output_filename
+
+                process_image(image_path, output_path)
+
                 total += 1
-                print(f"[OK] {filename} -> {output_filename}")
+
+                print(f"[OK] {image_path.name} -> {output_filename}")
 
             except Exception as e:
-                print(f"[ERROR] {filename}: {e}")
+                errors += 1
+                print(f"[ERROR] {image_path.name}: {e}")
 
-    print(f"\nProcessed {total} images.")
+    print("\n=== PREPROCESS COMPLETE ===")
+    print(f"Processed: {total}")
+    print(f"Errors: {errors}")
 
 if __name__ == "__main__":
-    main()print("Preprocessing pipeline coming soon.")
+    main()
