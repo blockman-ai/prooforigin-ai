@@ -1,1 +1,15 @@
+project: prooforigin-ai
 
+labels:
+  - real
+  - ai_generated
+  - edited
+  - screenshot
+  - manipulated
+
+paths:
+  raw_data: data/raw
+  labeled_data: data/labeled
+  processed_data: data/processed
+  metadata: data/metadata/dataset.csv
+  models: models
