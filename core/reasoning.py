@@ -5,7 +5,8 @@ from core.evidence import EvidenceWeightingSystem
 class ProofOriginReasoner:
 
     def __init__(self):
-        self.constitution = PROOFORIGIN_CONSTITUTION
+    self.constitution = PROOFORIGIN_CONSTITUTION
+    self.evidence_system = EvidenceWeightingSystem()
 
     def classify_confidence(self, score):
 
