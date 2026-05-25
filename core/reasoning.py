@@ -1,4 +1,5 @@
 from core.constitution import PROOFORIGIN_CONSTITUTION
+from core.evidence import EvidenceWeightingSystem
 
 
 class ProofOriginReasoner:
