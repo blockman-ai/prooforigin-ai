@@ -86,3 +86,11 @@ class ProofOriginReasoner:
         }
 
         return result
+
+def analyze_signals(self, signals):
+
+    ai_score = self.evidence_system.calculate_ai_score(signals)
+
+    evidence = self.evidence_system.explain_evidence(signals)
+
+    return self.generate_reasoning(ai_score, evidence)
