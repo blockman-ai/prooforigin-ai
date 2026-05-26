@@ -15,12 +15,33 @@ class DatasetLogger:
         os.makedirs(os.path.dirname(self.log_path), exist_ok=True)
         os.makedirs(self.evidence_path, exist_ok=True)
 
-    def log_analysis(self, file_id, report, external_engines=None, user_feedback=None):
+    def log_analysis(
+        self,
+        file_id,
+        report,
+        external_engines=None,
+        user_feedback=None,
+        file_hash=None,
+        file_name=None,
+        file_type=None,
+        file_size=None,
+    ):
         timestamp = datetime.utcnow().isoformat()
+
+        integrity = {
+            "sha256": file_hash,
+            "file_name": file_name,
+            "file_type": file_type,
+            "file_size": file_size,
+            "hash_algorithm": "SHA-256",
+            "verification_status": "hash_recorded" if file_hash else "hash_missing",
+            "tamper_evidence": "available" if file_hash else "unavailable",
+        }
 
         evidence_record = {
             "report_id": file_id,
             "created_at": timestamp,
+            "integrity": integrity,
             "prooforigin": {
                 "score": report.get("summary", {}).get("ai_score"),
                 "classification": report.get("summary", {}).get("label"),
@@ -52,6 +73,10 @@ class DatasetLogger:
         entry = {
             "file_id": file_id,
             "timestamp": timestamp,
+            "file_hash": file_hash,
+            "file_name": file_name,
+            "file_type": file_type,
+            "file_size": file_size,
             "prooforigin_report": report,
             "evidence_file": evidence_file,
             "external_engines": external_engines or {},
