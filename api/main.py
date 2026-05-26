@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import tempfile
 import shutil
 import uuid
+import json
+import os
 
 from core.reasoning import ProofOriginReasoner
 from core.extractor import ImageSignalExtractor
@@ -87,4 +89,25 @@ async def analyze_image(file: UploadFile = File(...)):
             "consensus_score"
         ),
         "verdict": result.get("summary", {}).get("label"),
+    }
+
+
+@app.get("/evidence/{file_id}")
+def get_evidence(file_id: str):
+    evidence_path = f"data/evidence/{file_id}.json"
+
+    if not os.path.exists(evidence_path):
+        return {
+            "success": False,
+            "error": "Evidence record not found",
+            "file_id": file_id,
+        }
+
+    with open(evidence_path, "r", encoding="utf-8") as f:
+        evidence = json.load(f)
+
+    return {
+        "success": True,
+        "file_id": file_id,
+        "evidence": evidence,
     }
