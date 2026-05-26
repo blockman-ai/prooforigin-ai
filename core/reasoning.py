@@ -4,7 +4,7 @@ from core.signals import ForensicSignalAnalyzer
 from core.origin import OriginIntelligence
 from core.consensus import ConsensusIntelligenceEngine
 from core.adversarial import AdversarialDetectionEngine
-
+from core.provenance import ProvenanceIntelligenceLayer
 
 class ProofOriginReasoner:
 
@@ -15,6 +15,7 @@ class ProofOriginReasoner:
         self.origin_intelligence = OriginIntelligence()
         self.consensus_engine = ConsensusIntelligenceEngine()
         self.adversarial_engine = AdversarialDetectionEngine()
+        self.provenance_layer = ProvenanceIntelligenceLayer()
 
     def classify_confidence(self, score):
         if score >= 90:
@@ -127,5 +128,10 @@ class ProofOriginReasoner:
         reasoning_result["adversarial"] = (
             self.adversarial_engine.analyze_adversarial_risk(input_data)
         )
-
+        reasoning_result["provenance"] = (
+            self.provenance_layer.build_provenance_report(
+                input_data,
+                reasoning_result
+            )
+        )
         return reasoning_result
