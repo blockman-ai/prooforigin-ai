@@ -8,8 +8,12 @@ from core.extractor import ImageSignalExtractor
 from core.adapter import ExtractorAdapter
 from core.vision import VisionForensicsEngine
 from core.dataset_logger import DatasetLogger
+from api.feedback import router as feedback_router
+
 
 app = FastAPI(title="ProofOrigin AI API")
+
+app.include_router(feedback_router)
 
 reasoner = ProofOriginReasoner()
 extractor = ImageSignalExtractor()
@@ -35,9 +39,7 @@ async def analyze_image(file: UploadFile = File(...)):
         image_path = temp_file.name
 
     metadata = extractor.extract_metadata(image_path)
-
     extracted_signals = extractor.detect_basic_signals(metadata)
-
     vision_findings = vision_engine.analyze_image(image_path)
 
     input_data = adapter.build_input_data(
