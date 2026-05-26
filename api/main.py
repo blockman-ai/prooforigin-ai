@@ -66,14 +66,33 @@ async def analyze_image(file: UploadFile = File(...)):
 
     file_id = str(uuid.uuid4())
 
+    external_engines = {
+        "prooforigin": {
+            "status": "complete",
+            "score": result.get("summary", {}).get("ai_score", 0),
+            "label": result.get("summary", {}).get("label"),
+        },
+        "sightengine": {
+            "status": "pending",
+            "score": None,
+            "label": None,
+        },
+        "openai_vision": {
+            "status": "pending",
+            "score": None,
+            "label": None,
+        },
+        "openai_reasoning": {
+            "status": "pending",
+            "score": None,
+            "label": None,
+        },
+    }
+
     dataset_logger.log_analysis(
         file_id=file_id,
         report=result,
-        external_engines={
-            "sightengine": "pending",
-            "openai_vision": "pending",
-            "openai_reasoning": "pending",
-        },
+        external_engines=external_engines,
     )
 
     print(f"[ProofOrigin] Evidence logged: {file_id}")
@@ -89,6 +108,7 @@ async def analyze_image(file: UploadFile = File(...)):
             "consensus_score"
         ),
         "verdict": result.get("summary", {}).get("label"),
+        "engine_outputs": external_engines,
     }
 
 
