@@ -13,6 +13,7 @@ from core.adapter import ExtractorAdapter
 from core.vision import VisionForensicsEngine
 from core.dataset_logger import DatasetLogger
 from core.external_engines import run_sightengine_analysis
+from core.consensus_engine import calculate_weighted_consensus
 from api.feedback import router as feedback_router
 
 
@@ -105,6 +106,12 @@ async def analyze_image(file: UploadFile = File(...)):
         },
     }
 
+    weighted_consensus = calculate_weighted_consensus(external_engines)
+
+    result["weighted_consensus"] = weighted_consensus
+    result["file_id"] = file_id
+    result["training_status"] = "logged_for_review"
+
     dataset_logger.log_analysis(
         file_id=file_id,
         report=result,
@@ -118,20 +125,21 @@ async def analyze_image(file: UploadFile = File(...)):
     print(f"[ProofOrigin] Evidence logged: {file_id}")
     print(f"[ProofOrigin] SHA-256: {file_hash}")
     print(f"[ProofOrigin] Sightengine: {sightengine_result.get('status')}")
-
-    result["file_id"] = file_id
-    result["training_status"] = "logged_for_review"
+    print(f"[ProofOrigin] Weighted consensus: {weighted_consensus}")
 
     return {
         **result,
         "file_id": file_id,
-        "percent": result.get("summary", {}).get("ai_score", 0),
+        "percent": weighted_consensus.get("score")
+        if weighted_consensus.get("score") is not None
+        else result.get("summary", {}).get("ai_score", 0),
         "metadata": metadata,
         "integrity": integrity,
         "proofOriginScore": result.get("consensus_analysis", {}).get(
             "consensus_score"
         ),
-        "verdict": result.get("summary", {}).get("label"),
+        "weightedConsensus": weighted_consensus,
+        "verdict": weighted_consensus.get("label") or result.get("summary", {}).get("label"),
         "engine_outputs": external_engines,
     }
 
