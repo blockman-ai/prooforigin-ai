@@ -66,6 +66,12 @@ async def analyze_image(file: UploadFile = File(...)):
     )
 
     result["file_id"] = file_id
-    result["training_status"] = "logged_for_review"
+result["training_status"] = "logged_for_review"
 
-    return result
+return {
+    **result,
+    "percent": result.get("summary", {}).get("ai_score", 0),
+    "metadata": metadata,
+    "proofOriginScore": result.get("consensus_analysis", {}).get("consensus_score"),
+    "verdict": result.get("summary", {}).get("label"),
+}
