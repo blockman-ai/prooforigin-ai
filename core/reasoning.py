@@ -8,6 +8,7 @@ class ProofOriginReasoner:
     self.constitution = PROOFORIGIN_CONSTITUTION
     self.evidence_system = EvidenceWeightingSystem()
     self.signal_analyzer = ForensicSignalAnalyzer()
+    
     def classify_confidence(self, score):
 
         if score >= 90:
