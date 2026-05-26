@@ -2,6 +2,7 @@ from core.constitution import PROOFORIGIN_CONSTITUTION
 from core.evidence import EvidenceWeightingSystem
 from core.signals import ForensicSignalAnalyzer
 from core.origin import OriginIntelligence
+from core.consensus import ConsensusIntelligenceEngine
 class ProofOriginReasoner:
 
     def __init__(self):
@@ -9,6 +10,7 @@ class ProofOriginReasoner:
     self.evidence_system = EvidenceWeightingSystem()
     self.signal_analyzer = ForensicSignalAnalyzer()
     self.origin_intelligence = OriginIntelligence()
+    self.consensus_engine = ConsensusIntelligenceEngine()
     
     def classify_confidence(self, score):
 
