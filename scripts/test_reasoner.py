@@ -1,36 +1,20 @@
 from core.reasoning import ProofOriginReasoner
+from core.extractor import ImageSignalExtractor
 
 
+extractor = ImageSignalExtractor()
 reasoner = ProofOriginReasoner()
 
-sample_input = {
-    "metadata": {
-        "software": "Stable Diffusion",
-    },
-    "exif": {},
-    "image_info": {
-        "filename": "ai_test_image.png",
-        "compression_quality": 70,
-        "has_screen_dimensions": False,
-    },
-    "visual_findings": [
-        "unnatural skin texture",
-        "warped fingers",
-        "inconsistent background details",
-    ],
-    "lighting_findings": [
-        "shadow direction mismatch",
-        "reflection inconsistency",
-    ],
-    "ai_findings": [
-        "diffusion texture pattern",
-        "synthetic facial symmetry",
-        "repeated background artifacts",
-        "unnatural object edges",
-        "AI-like detail hallucination",
-    ],
+image_path = "sample_images/test.png"
+
+metadata = extractor.extract_metadata(image_path)
+signals = extractor.detect_basic_signals(metadata)
+
+input_data = {
+    "metadata": metadata,
+    "signals": signals,
 }
 
-result = reasoner.analyze_input_data(sample_input)
+result = reasoner.analyze_input_data(input_data)
 
 print(result)
