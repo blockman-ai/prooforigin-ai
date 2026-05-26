@@ -1,12 +1,9 @@
 fastapi
 uvicorn
-torch
-torchvision
 opencv-python
 pillow
 numpy
 pandas
 scikit-learn
-transformers
 python-multipart
 pyyaml
