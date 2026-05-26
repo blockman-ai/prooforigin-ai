@@ -74,6 +74,8 @@ async def analyze_image(file: UploadFile = File(...)):
         },
     )
 
+    print(f"[ProofOrigin] Evidence logged: {file_id}")
+
     result["file_id"] = file_id
     result["training_status"] = "logged_for_review"
 
