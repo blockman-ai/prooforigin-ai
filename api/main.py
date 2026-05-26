@@ -1,4 +1,5 @@
 from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
 import tempfile
 import shutil
 import uuid
@@ -12,6 +13,18 @@ from api.feedback import router as feedback_router
 
 
 app = FastAPI(title="ProofOrigin AI API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://prooforigin.org",
+        "https://www.prooforigin.org",
+        "http://localhost:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(feedback_router)
 
@@ -41,10 +54,7 @@ async def analyze_image(file: UploadFile = File(...)):
     extracted_signals = extractor.detect_basic_signals(metadata)
     vision_findings = vision_engine.analyze_image(image_path)
 
-    input_data = adapter.build_input_data(
-        metadata,
-        extracted_signals
-    )
+    input_data = adapter.build_input_data(metadata, extracted_signals)
 
     input_data["visual_findings"] += vision_findings.get("visual_findings", [])
     input_data["lighting_findings"] += vision_findings.get("lighting_findings", [])
