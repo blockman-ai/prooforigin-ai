@@ -128,3 +128,29 @@ def analyze_input_data(self, input_data):
     }
 
     return reasoning_result
+def build_consensus(self, reasoning_result):
+
+    ai_score = reasoning_result["analysis"]["ai_score"]
+
+    origin_label = reasoning_result.get("origin", {}).get("label", "")
+
+    origin_score = 50
+
+    if origin_label == "Synthetic / AI-Generated":
+        origin_score = 90
+    elif origin_label == "Edited or Manipulated":
+        origin_score = 70
+    elif origin_label == "Screenshot":
+        origin_score = 55
+    elif origin_label == "Camera Capture":
+        origin_score = 15
+
+    engine_scores = {
+        "forensic_score": ai_score,
+        "origin_score": origin_score,
+        "metadata_score": ai_score * 0.6,
+        "manipulation_score": ai_score * 0.5,
+        "human_authenticity_score": 100 - ai_score,
+    }
+
+    return self.consensus_engine.build_consensus_result(engine_scores)
