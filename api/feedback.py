@@ -15,14 +15,33 @@ class FeedbackPayload(BaseModel):
     notes: str | None = None
 
 
+VALID_LABELS = {
+    "correct",
+    "wrong",
+    "ai",
+    "human",
+    "edited",
+    "disputed",
+}
+
+
 @router.post("/feedback")
 def submit_feedback(payload: FeedbackPayload):
     os.makedirs("data", exist_ok=True)
 
+    label = payload.user_label.lower().strip()
+
+    if label not in VALID_LABELS:
+        return {
+            "success": False,
+            "error": "Invalid feedback label",
+            "allowed_labels": list(VALID_LABELS),
+        }
+
     entry = {
         "file_id": payload.file_id,
         "timestamp": datetime.utcnow().isoformat(),
-        "user_label": payload.user_label,
+        "user_label": label,
         "user_confidence": payload.user_confidence,
         "notes": payload.notes,
         "status": "received",
@@ -31,7 +50,51 @@ def submit_feedback(payload: FeedbackPayload):
     with open("data/user_feedback_log.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
 
+    evidence_path = f"data/evidence/{payload.file_id}.json"
+
+    if os.path.exists(evidence_path):
+        with open(evidence_path, "r", encoding="utf-8") as f:
+            evidence = json.load(f)
+
+        feedback = evidence.get("feedback", {})
+
+        feedback.setdefault("correct_votes", 0)
+        feedback.setdefault("wrong_votes", 0)
+        feedback.setdefault("ai_votes", 0)
+        feedback.setdefault("human_votes", 0)
+        feedback.setdefault("edited_votes", 0)
+        feedback.setdefault("disputed_votes", 0)
+
+        if label == "correct":
+            feedback["correct_votes"] += 1
+
+        elif label == "wrong":
+            feedback["wrong_votes"] += 1
+
+        elif label == "ai":
+            feedback["ai_votes"] += 1
+
+        elif label == "human":
+            feedback["human_votes"] += 1
+
+        elif label == "edited":
+            feedback["edited_votes"] += 1
+
+        elif label == "disputed":
+            feedback["disputed_votes"] += 1
+
+        evidence["feedback"] = feedback
+
+        with open(evidence_path, "w", encoding="utf-8") as f:
+            json.dump(evidence, f, indent=2)
+
+    print(
+        f"[ProofOrigin] Feedback received for {payload.file_id}: {label}"
+    )
+
     return {
+        "success": True,
         "status": "feedback_received",
         "file_id": payload.file_id,
+        "label": label,
     }
