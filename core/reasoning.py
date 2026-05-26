@@ -6,6 +6,7 @@ from core.consensus import ConsensusIntelligenceEngine
 from core.adversarial import AdversarialDetectionEngine
 from core.provenance import ProvenanceIntelligenceLayer
 from core.report import ForensicReportFormatter
+from core.trace import TraceIntelligenceEngine
 
 class ProofOriginReasoner:
 
@@ -18,6 +19,7 @@ class ProofOriginReasoner:
         self.adversarial_engine = AdversarialDetectionEngine()
         self.provenance_layer = ProvenanceIntelligenceLayer()
         self.report_formatter = ForensicReportFormatter()
+        self.trace_engine = TraceIntelligenceEngine()
         
     def classify_confidence(self, score):
         if score >= 90:
