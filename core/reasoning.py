@@ -6,6 +6,7 @@ from core.consensus import ConsensusIntelligenceEngine
 from core.adversarial import AdversarialDetectionEngine
 from core.provenance import ProvenanceIntelligenceLayer
 
+
 class ProofOriginReasoner:
 
     def __init__(self):
