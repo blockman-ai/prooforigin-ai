@@ -24,7 +24,10 @@ class TraceIntelligenceEngine:
                 "Stable Diffusion metadata detected"
             )
 
-        compression = image_info.get("compression_quality", 100)
+        compression = image_info.get("compression_quality")
+
+if compression is not None and compression < 85:
+    trace["recompression_detected"] = True
 
         if compression < 85:
             trace["recompression_detected"] = True
