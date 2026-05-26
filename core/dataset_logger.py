@@ -62,4 +62,6 @@ class DatasetLogger:
         with open(self.log_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry) + "\n")
 
+        print(f"[ProofOrigin] Evidence file created: {evidence_file}")
+
         return entry
