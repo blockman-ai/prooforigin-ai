@@ -8,6 +8,7 @@ class ProofOriginReasoner:
     self.constitution = PROOFORIGIN_CONSTITUTION
     self.evidence_system = EvidenceWeightingSystem()
     self.signal_analyzer = ForensicSignalAnalyzer()
+    self.origin_intelligence = OriginIntelligence()
     
     def classify_confidence(self, score):
 
