@@ -7,6 +7,7 @@ class ForensicReportFormatter:
         consensus = reasoning_result.get("consensus", {})
         adversarial = reasoning_result.get("adversarial", {})
         provenance = reasoning_result.get("provenance", {})
+        trace = reasoning_result.get("trace", {})
 
         report = {
             "summary": {
@@ -22,6 +23,8 @@ class ForensicReportFormatter:
             "adversarial_analysis": adversarial,
 
             "provenance_analysis": provenance,
+
+            "trace_analysis": trace,
 
             "evidence": analysis.get("evidence", []),
 
