@@ -121,25 +121,25 @@ class ProofOriginReasoner:
 
         origin_explanation = self.origin_intelligence.explain_origin(origin_label)
 
-        reasoning_result["origin"] = {
-            "label": origin_label,
-            "confidence": origin_confidence,
-            "explanation": origin_explanation,
-        }
-
         reasoning_result["consensus"] = self.build_consensus(reasoning_result)
 
         reasoning_result["adversarial"] = (
             self.adversarial_engine.analyze_adversarial_risk(input_data)
         )
+
         reasoning_result["provenance"] = (
             self.provenance_layer.build_provenance_report(
                 input_data,
                 reasoning_result
             )
         )
-        final_report = self.report_formatter.build_report(
-    reasoning_result
-)
 
-return final_report
+        reasoning_result["trace"] = (
+            self.trace_engine.analyze_trace(input_data)
+        )
+
+        final_report = self.report_formatter.build_report(
+            reasoning_result
+        )
+
+        return final_report
