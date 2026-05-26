@@ -28,6 +28,40 @@ def calculate_weighted_consensus(engines):
 
     final_score = round(total_score / total_weight, 2)
 
+    prooforigin_engine = engines.get("prooforigin", {})
+
+    ai_findings = (
+        prooforigin_engine.get("ai_findings", [])
+        or prooforigin_engine.get("findings", [])
+        or []
+    )
+
+    synthetic_keywords = [
+        "synthetic",
+        "diffusion",
+        "ai-generated",
+        "stylized",
+        "unnatural",
+        "composite",
+        "generated",
+        "artificial",
+        "rendered",
+        "cgi",
+    ]
+
+    synthetic_hits = 0
+
+    for finding in ai_findings:
+        text = str(finding).lower()
+
+        if any(keyword in text for keyword in synthetic_keywords):
+            synthetic_hits += 1
+
+    if synthetic_hits >= 2 and final_score < 50:
+        final_score += 35
+
+    final_score = min(final_score, 100)
+
     if final_score >= 85:
         label = "Strong AI Consensus"
     elif final_score >= 65:
@@ -44,4 +78,5 @@ def calculate_weighted_consensus(engines):
         "label": label,
         "status": "complete",
         "engines_used": engines_used,
+        "synthetic_hits": synthetic_hits,
     }
