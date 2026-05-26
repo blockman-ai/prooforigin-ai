@@ -27,13 +27,12 @@ def root():
     return {
         "name": "ProofOrigin AI",
         "status": "running",
-        "mission": "Media authenticity research and forensic intelligence."
+        "mission": "Media authenticity research and forensic intelligence.",
     }
 
 
 @app.post("/analyze")
 async def analyze_image(file: UploadFile = File(...)):
-
     with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as temp_file:
         shutil.copyfileobj(file.file, temp_file)
         image_path = temp_file.name
@@ -47,9 +46,9 @@ async def analyze_image(file: UploadFile = File(...)):
         extracted_signals
     )
 
-    input_data["visual_findings"] += vision_findings["visual_findings"]
-    input_data["lighting_findings"] += vision_findings["lighting_findings"]
-    input_data["ai_findings"] += vision_findings["ai_findings"]
+    input_data["visual_findings"] += vision_findings.get("visual_findings", [])
+    input_data["lighting_findings"] += vision_findings.get("lighting_findings", [])
+    input_data["ai_findings"] += vision_findings.get("ai_findings", [])
 
     result = reasoner.analyze_input_data(input_data)
 
@@ -62,16 +61,18 @@ async def analyze_image(file: UploadFile = File(...)):
             "sightengine": "pending",
             "openai_vision": "pending",
             "openai_reasoning": "pending",
-        }
+        },
     )
 
     result["file_id"] = file_id
-result["training_status"] = "logged_for_review"
+    result["training_status"] = "logged_for_review"
 
-return {
-    **result,
-    "percent": result.get("summary", {}).get("ai_score", 0),
-    "metadata": metadata,
-    "proofOriginScore": result.get("consensus_analysis", {}).get("consensus_score"),
-    "verdict": result.get("summary", {}).get("label"),
-}
+    return {
+        **result,
+        "percent": result.get("summary", {}).get("ai_score", 0),
+        "metadata": metadata,
+        "proofOriginScore": result.get("consensus_analysis", {}).get(
+            "consensus_score"
+        ),
+        "verdict": result.get("summary", {}).get("label"),
+    }
