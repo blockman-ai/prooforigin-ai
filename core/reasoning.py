@@ -1,13 +1,13 @@
 from core.constitution import PROOFORIGIN_CONSTITUTION
 from core.evidence import EvidenceWeightingSystem
-
+from core.signals import ForensicSignalAnalyzer
 
 class ProofOriginReasoner:
 
     def __init__(self):
     self.constitution = PROOFORIGIN_CONSTITUTION
     self.evidence_system = EvidenceWeightingSystem()
-
+    self.signal_analyzer = ForensicSignalAnalyzer()
     def classify_confidence(self, score):
 
         if score >= 90:
@@ -94,3 +94,9 @@ def analyze_signals(self, signals):
     evidence = self.evidence_system.explain_evidence(signals)
 
     return self.generate_reasoning(ai_score, evidence)
+    
+def analyze_input_data(self, input_data):
+
+    signals = self.signal_analyzer.build_signals(input_data)
+
+    return self.analyze_signals(signals)
