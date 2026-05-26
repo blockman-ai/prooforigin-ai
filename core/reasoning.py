@@ -1,7 +1,7 @@
 from core.constitution import PROOFORIGIN_CONSTITUTION
 from core.evidence import EvidenceWeightingSystem
 from core.signals import ForensicSignalAnalyzer
-
+from core.origin import OriginIntelligence
 class ProofOriginReasoner:
 
     def __init__(self):
