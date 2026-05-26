@@ -5,6 +5,7 @@ import shutil
 import uuid
 import json
 import os
+import hashlib
 
 from core.reasoning import ProofOriginReasoner
 from core.extractor import ImageSignalExtractor
@@ -52,6 +53,22 @@ async def analyze_image(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, temp_file)
         image_path = temp_file.name
 
+    with open(image_path, "rb") as f:
+        file_bytes = f.read()
+
+    file_hash = hashlib.sha256(file_bytes).hexdigest()
+    file_size = len(file_bytes)
+
+    integrity = {
+        "sha256": file_hash,
+        "file_name": file.filename,
+        "file_type": file.content_type,
+        "file_size": file_size,
+        "hash_algorithm": "SHA-256",
+        "verification_status": "hash_recorded",
+        "tamper_evidence": "available",
+    }
+
     metadata = extractor.extract_metadata(image_path)
     extracted_signals = extractor.detect_basic_signals(metadata)
     vision_findings = vision_engine.analyze_image(image_path)
@@ -93,17 +110,24 @@ async def analyze_image(file: UploadFile = File(...)):
         file_id=file_id,
         report=result,
         external_engines=external_engines,
+        file_hash=file_hash,
+        file_name=file.filename,
+        file_type=file.content_type,
+        file_size=file_size,
     )
 
     print(f"[ProofOrigin] Evidence logged: {file_id}")
+    print(f"[ProofOrigin] SHA-256: {file_hash}")
 
     result["file_id"] = file_id
     result["training_status"] = "logged_for_review"
 
     return {
         **result,
+        "file_id": file_id,
         "percent": result.get("summary", {}).get("ai_score", 0),
         "metadata": metadata,
+        "integrity": integrity,
         "proofOriginScore": result.get("consensus_analysis", {}).get(
             "consensus_score"
         ),
