@@ -12,6 +12,7 @@ from core.extractor import ImageSignalExtractor
 from core.adapter import ExtractorAdapter
 from core.vision import VisionForensicsEngine
 from core.dataset_logger import DatasetLogger
+from core.external_engines import run_sightengine_analysis
 from api.feedback import router as feedback_router
 
 
@@ -83,17 +84,15 @@ async def analyze_image(file: UploadFile = File(...)):
 
     file_id = str(uuid.uuid4())
 
+    sightengine_result = run_sightengine_analysis(image_path)
+
     external_engines = {
         "prooforigin": {
             "status": "complete",
             "score": result.get("summary", {}).get("ai_score", 0),
             "label": result.get("summary", {}).get("label"),
         },
-        "sightengine": {
-            "status": "pending",
-            "score": None,
-            "label": None,
-        },
+        "sightengine": sightengine_result,
         "openai_vision": {
             "status": "pending",
             "score": None,
@@ -118,6 +117,7 @@ async def analyze_image(file: UploadFile = File(...)):
 
     print(f"[ProofOrigin] Evidence logged: {file_id}")
     print(f"[ProofOrigin] SHA-256: {file_hash}")
+    print(f"[ProofOrigin] Sightengine: {sightengine_result.get('status')}")
 
     result["file_id"] = file_id
     result["training_status"] = "logged_for_review"
