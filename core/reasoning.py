@@ -5,7 +5,7 @@ from core.origin import OriginIntelligence
 from core.consensus import ConsensusIntelligenceEngine
 from core.adversarial import AdversarialDetectionEngine
 from core.provenance import ProvenanceIntelligenceLayer
-
+from core.report import ForensicReportFormatter
 
 class ProofOriginReasoner:
 
@@ -17,7 +17,8 @@ class ProofOriginReasoner:
         self.consensus_engine = ConsensusIntelligenceEngine()
         self.adversarial_engine = AdversarialDetectionEngine()
         self.provenance_layer = ProvenanceIntelligenceLayer()
-
+        self.report_formatter = ForensicReportFormatter()
+        
     def classify_confidence(self, score):
         if score >= 90:
             return "Very High"
@@ -135,4 +136,8 @@ class ProofOriginReasoner:
                 reasoning_result
             )
         )
-        return reasoning_result
+        final_report = self.report_formatter.build_report(
+    reasoning_result
+)
+
+return final_report
