@@ -1,11 +1,13 @@
 from fastapi import FastAPI, UploadFile, File
 import tempfile
 import shutil
+import uuid
 
 from core.reasoning import ProofOriginReasoner
 from core.extractor import ImageSignalExtractor
 from core.adapter import ExtractorAdapter
 from core.vision import VisionForensicsEngine
+from core.dataset_logger import DatasetLogger
 
 app = FastAPI(title="ProofOrigin AI API")
 
@@ -13,6 +15,7 @@ reasoner = ProofOriginReasoner()
 extractor = ImageSignalExtractor()
 adapter = ExtractorAdapter()
 vision_engine = VisionForensicsEngine()
+dataset_logger = DatasetLogger()
 
 
 @app.get("/")
@@ -42,18 +45,25 @@ async def analyze_image(file: UploadFile = File(...)):
         extracted_signals
     )
 
-    input_data["visual_findings"] += (
-        vision_findings["visual_findings"]
-    )
-
-    input_data["lighting_findings"] += (
-        vision_findings["lighting_findings"]
-    )
-
-    input_data["ai_findings"] += (
-        vision_findings["ai_findings"]
-    )
+    input_data["visual_findings"] += vision_findings["visual_findings"]
+    input_data["lighting_findings"] += vision_findings["lighting_findings"]
+    input_data["ai_findings"] += vision_findings["ai_findings"]
 
     result = reasoner.analyze_input_data(input_data)
+
+    file_id = str(uuid.uuid4())
+
+    dataset_logger.log_analysis(
+        file_id=file_id,
+        report=result,
+        external_engines={
+            "sightengine": "pending",
+            "openai_vision": "pending",
+            "openai_reasoning": "pending",
+        }
+    )
+
+    result["file_id"] = file_id
+    result["training_status"] = "logged_for_review"
 
     return result
