@@ -101,4 +101,28 @@ def analyze_input_data(self, input_data):
 
     signals = self.signal_analyzer.build_signals(input_data)
 
-    return self.analyze_signals(signals)
+    reasoning_result = self.analyze_signals(signals)
+
+    origin_label = self.origin_intelligence.classify_origin(
+        input_data,
+        signals
+    )
+
+    origin_confidence = (
+        self.origin_intelligence.estimate_origin_confidence(
+            origin_label,
+            signals
+        )
+    )
+
+    origin_explanation = (
+        self.origin_intelligence.explain_origin(origin_label)
+    )
+
+    reasoning_result["origin"] = {
+        "label": origin_label,
+        "confidence": origin_confidence,
+        "explanation": origin_explanation,
+    }
+
+    return reasoning_result
