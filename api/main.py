@@ -12,7 +12,10 @@ from core.extractor import ImageSignalExtractor
 from core.adapter import ExtractorAdapter
 from core.vision import VisionForensicsEngine
 from core.dataset_logger import DatasetLogger
-from core.external_engines import run_sightengine_analysis
+from core.external_engines import (
+    run_sightengine_analysis,
+    run_openai_vision_analysis,
+)
 from core.consensus_engine import calculate_weighted_consensus
 from api.feedback import router as feedback_router
 
@@ -86,6 +89,7 @@ async def analyze_image(file: UploadFile = File(...)):
     file_id = str(uuid.uuid4())
 
     sightengine_result = run_sightengine_analysis(image_path)
+    openai_vision_result = run_openai_vision_analysis(image_path)
 
     external_engines = {
         "prooforigin": {
@@ -94,11 +98,7 @@ async def analyze_image(file: UploadFile = File(...)):
             "label": result.get("summary", {}).get("label"),
         },
         "sightengine": sightengine_result,
-        "openai_vision": {
-            "status": "pending",
-            "score": None,
-            "label": None,
-        },
+        "openai_vision": openai_vision_result,
         "openai_reasoning": {
             "status": "pending",
             "score": None,
@@ -125,6 +125,7 @@ async def analyze_image(file: UploadFile = File(...)):
     print(f"[ProofOrigin] Evidence logged: {file_id}")
     print(f"[ProofOrigin] SHA-256: {file_hash}")
     print(f"[ProofOrigin] Sightengine: {sightengine_result.get('status')}")
+    print(f"[ProofOrigin] OpenAI Vision: {openai_vision_result.get('status')}")
     print(f"[ProofOrigin] Weighted consensus: {weighted_consensus}")
 
     return {
@@ -139,7 +140,8 @@ async def analyze_image(file: UploadFile = File(...)):
             "consensus_score"
         ),
         "weightedConsensus": weighted_consensus,
-        "verdict": weighted_consensus.get("label") or result.get("summary", {}).get("label"),
+        "verdict": weighted_consensus.get("label")
+        or result.get("summary", {}).get("label"),
         "engine_outputs": external_engines,
     }
 
