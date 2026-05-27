@@ -12,14 +12,32 @@ from core.extractor import ImageSignalExtractor
 from core.adapter import ExtractorAdapter
 from core.vision import VisionForensicsEngine
 from core.dataset_logger import DatasetLogger
+
 from core.external_engines import (
     run_sightengine_analysis,
     run_openai_vision_analysis,
 )
-from core.consensus_engine import calculate_weighted_consensus
-from core.forensic_context import analyze_forensic_context
-from core.engine_arbitration import analyze_engine_disagreement
-from core.human_summary import generate_human_summary
+
+from core.consensus_engine import (
+    calculate_weighted_consensus,
+)
+
+from core.forensic_context import (
+    analyze_forensic_context,
+)
+
+from core.engine_arbitration import (
+    analyze_engine_disagreement,
+)
+
+from core.human_summary import (
+    generate_human_summary,
+)
+
+from core.confidence_escalation import (
+    apply_confidence_escalation,
+)
+
 from api.feedback import router as feedback_router
 
 
@@ -57,7 +75,10 @@ def root():
 
 @app.post("/analyze")
 async def analyze_image(file: UploadFile = File(...)):
-    with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as temp_file:
+    with tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=file.filename,
+    ) as temp_file:
         shutil.copyfileobj(file.file, temp_file)
         image_path = temp_file.name
 
@@ -78,30 +99,65 @@ async def analyze_image(file: UploadFile = File(...)):
     }
 
     metadata = extractor.extract_metadata(image_path)
-    extracted_signals = extractor.detect_basic_signals(metadata)
-    vision_findings = vision_engine.analyze_image(image_path)
 
-    input_data = adapter.build_input_data(metadata, extracted_signals)
+    extracted_signals = extractor.detect_basic_signals(
+        metadata
+    )
 
-    input_data["visual_findings"] += vision_findings.get("visual_findings", [])
-    input_data["lighting_findings"] += vision_findings.get("lighting_findings", [])
-    input_data["ai_findings"] += vision_findings.get("ai_findings", [])
+    vision_findings = vision_engine.analyze_image(
+        image_path
+    )
+
+    input_data = adapter.build_input_data(
+        metadata,
+        extracted_signals,
+    )
+
+    input_data["visual_findings"] += vision_findings.get(
+        "visual_findings",
+        [],
+    )
+
+    input_data["lighting_findings"] += vision_findings.get(
+        "lighting_findings",
+        [],
+    )
+
+    input_data["ai_findings"] += vision_findings.get(
+        "ai_findings",
+        [],
+    )
 
     result = reasoner.analyze_input_data(input_data)
 
     file_id = str(uuid.uuid4())
 
-    sightengine_result = run_sightengine_analysis(image_path)
-    openai_vision_result = run_openai_vision_analysis(image_path)
+    sightengine_result = run_sightengine_analysis(
+        image_path
+    )
+
+    openai_vision_result = run_openai_vision_analysis(
+        image_path
+    )
 
     external_engines = {
         "prooforigin": {
             "status": "complete",
-            "score": result.get("summary", {}).get("ai_score", 0),
-            "label": result.get("summary", {}).get("label"),
+            "score": result.get(
+                "summary",
+                {},
+            ).get("ai_score", 0),
+
+            "label": result.get(
+                "summary",
+                {},
+            ).get("label"),
         },
+
         "sightengine": sightengine_result,
+
         "openai_vision": openai_vision_result,
+
         "openai_reasoning": {
             "status": "pending",
             "score": None,
@@ -109,7 +165,9 @@ async def analyze_image(file: UploadFile = File(...)):
         },
     }
 
-    weighted_consensus = calculate_weighted_consensus(external_engines)
+    weighted_consensus = calculate_weighted_consensus(
+        external_engines
+    )
 
     forensic_context = analyze_forensic_context(
         report=result,
@@ -117,17 +175,24 @@ async def analyze_image(file: UploadFile = File(...)):
         metadata=metadata,
     )
 
+    escalated_consensus = apply_confidence_escalation(
+        weighted_consensus,
+        forensic_context,
+        external_engines,
+    )
+
     engine_arbitration = analyze_engine_disagreement(
         external_engines
     )
 
     human_summary = generate_human_summary(
-        weighted_consensus,
+        escalated_consensus,
         forensic_context,
         engine_arbitration,
     )
 
-    result["weighted_consensus"] = weighted_consensus
+    result["weighted_consensus"] = escalated_consensus
+    result["original_consensus"] = weighted_consensus
     result["forensic_context"] = forensic_context
     result["engine_arbitration"] = engine_arbitration
     result["human_summary"] = human_summary
@@ -146,34 +211,81 @@ async def analyze_image(file: UploadFile = File(...)):
 
     print(f"[ProofOrigin] Evidence logged: {file_id}")
     print(f"[ProofOrigin] SHA-256: {file_hash}")
-    print(f"[ProofOrigin] Sightengine: {sightengine_result.get('status')}")
-    print(f"[ProofOrigin] OpenAI Vision: {openai_vision_result.get('status')}")
-    print(f"[ProofOrigin] Weighted consensus: {weighted_consensus}")
-    print(f"[ProofOrigin] Forensic context: {forensic_context}")
-    print(f"[ProofOrigin] Engine arbitration: {engine_arbitration}")
-    print(f"[ProofOrigin] Human summary: {human_summary}")
+
+    print(
+        f"[ProofOrigin] Sightengine: "
+        f"{sightengine_result.get('status')}"
+    )
+
+    print(
+        f"[ProofOrigin] OpenAI Vision: "
+        f"{openai_vision_result.get('status')}"
+    )
+
+    print(
+        f"[ProofOrigin] Original consensus: "
+        f"{weighted_consensus}"
+    )
+
+    print(
+        f"[ProofOrigin] Escalated consensus: "
+        f"{escalated_consensus}"
+    )
+
+    print(
+        f"[ProofOrigin] Forensic context: "
+        f"{forensic_context}"
+    )
+
+    print(
+        f"[ProofOrigin] Engine arbitration: "
+        f"{engine_arbitration}"
+    )
+
+    print(
+        f"[ProofOrigin] Human summary: "
+        f"{human_summary}"
+    )
 
     return {
         **result,
+
         "file_id": file_id,
-        "percent": weighted_consensus.get("score")
-        if weighted_consensus.get("score") is not None
+
+        "percent": escalated_consensus.get("score")
+        if escalated_consensus.get("score") is not None
         else result.get("summary", {}).get("ai_score", 0),
+
         "metadata": metadata,
+
         "integrity": integrity,
-        "proofOriginScore": result.get("consensus_analysis", {}).get(
-            "consensus_score"
-        ),
-        "weightedConsensus": weighted_consensus,
-        "weighted_consensus": weighted_consensus,
+
+        "proofOriginScore": result.get(
+            "consensus_analysis",
+            {},
+        ).get("consensus_score"),
+
+        "weightedConsensus": escalated_consensus,
+        "weighted_consensus": escalated_consensus,
+
+        "originalConsensus": weighted_consensus,
+        "original_consensus": weighted_consensus,
+
+        "confidenceEscalation": escalated_consensus,
+        "confidence_escalation": escalated_consensus,
+
         "forensicContext": forensic_context,
         "forensic_context": forensic_context,
+
         "engineArbitration": engine_arbitration,
         "engine_arbitration": engine_arbitration,
+
         "humanSummary": human_summary,
         "human_summary": human_summary,
-        "verdict": weighted_consensus.get("label")
+
+        "verdict": escalated_consensus.get("label")
         or result.get("summary", {}).get("label"),
+
         "engine_outputs": external_engines,
     }
 
@@ -189,7 +301,11 @@ def get_evidence(file_id: str):
             "file_id": file_id,
         }
 
-    with open(evidence_path, "r", encoding="utf-8") as f:
+    with open(
+        evidence_path,
+        "r",
+        encoding="utf-8",
+    ) as f:
         evidence = json.load(f)
 
     return {
