@@ -65,8 +65,7 @@ def apply_confidence_escalation(
 
     # Strong synthetic evidence alone can escalate,
     # but only if indicator count is high.
-    if synthetic_indicators >= 5:
-        score = max(score, 70)
+    if synthetic_indicators >= 5 and engine_support_count >= 1:
         escalation_triggered = True
         escalation_reasons.append(
             "Very high synthetic indicator count"
