@@ -17,6 +17,7 @@ from core.external_engines import (
     run_openai_vision_analysis,
 )
 from core.consensus_engine import calculate_weighted_consensus
+from core.forensic_context import analyze_forensic_context
 from api.feedback import router as feedback_router
 
 
@@ -108,7 +109,14 @@ async def analyze_image(file: UploadFile = File(...)):
 
     weighted_consensus = calculate_weighted_consensus(external_engines)
 
+    forensic_context = analyze_forensic_context(
+        report=result,
+        external_engines=external_engines,
+        metadata=metadata,
+    )
+
     result["weighted_consensus"] = weighted_consensus
+    result["forensic_context"] = forensic_context
     result["file_id"] = file_id
     result["training_status"] = "logged_for_review"
 
@@ -127,6 +135,7 @@ async def analyze_image(file: UploadFile = File(...)):
     print(f"[ProofOrigin] Sightengine: {sightengine_result.get('status')}")
     print(f"[ProofOrigin] OpenAI Vision: {openai_vision_result.get('status')}")
     print(f"[ProofOrigin] Weighted consensus: {weighted_consensus}")
+    print(f"[ProofOrigin] Forensic context: {forensic_context}")
 
     return {
         **result,
@@ -140,6 +149,7 @@ async def analyze_image(file: UploadFile = File(...)):
             "consensus_score"
         ),
         "weightedConsensus": weighted_consensus,
+        "forensicContext": forensic_context,
         "verdict": weighted_consensus.get("label")
         or result.get("summary", {}).get("label"),
         "engine_outputs": external_engines,
