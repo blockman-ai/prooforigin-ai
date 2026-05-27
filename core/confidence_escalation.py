@@ -3,89 +3,52 @@ def apply_confidence_escalation(
     forensic_context,
     engine_outputs,
 ):
-    """
-    Escalates consensus confidence when
-    forensic indicators strongly suggest
-    synthetic or AI-generated media.
-    """
-
-    score = weighted_consensus.get("score", 0)
+    score = weighted_consensus.get("score", 0) or 0
     label = weighted_consensus.get("label", "Unknown")
 
+    prooforigin_score = engine_outputs.get("prooforigin", {}).get("score") or 0
+    sightengine_score = engine_outputs.get("sightengine", {}).get("score") or 0
+    openai_score = engine_outputs.get("openai_vision", {}).get("score") or 0
+
     synthetic_indicators = (
-        forensic_context.get(
-            "transformation_layers",
-            {},
-        ).get("synthetic_indicators", 0)
+        forensic_context.get("transformation_layers", {})
+        .get("synthetic_indicators", 0)
     )
 
     screenshot_indicators = (
-        forensic_context.get(
-            "transformation_layers",
-            {},
-        ).get("screenshot_indicators", 0)
+        forensic_context.get("transformation_layers", {})
+        .get("screenshot_indicators", 0)
     )
 
-    media_authenticity = forensic_context.get(
-        "final_media_authenticity",
-        "",
+    media_authenticity = (
+        forensic_context.get("final_media_authenticity", "") or ""
     ).lower()
-
-    openai_label = (
-        engine_outputs.get("openai_vision", {})
-        .get("label", "")
-        .lower()
-    )
 
     escalation_triggered = False
     escalation_reasons = []
+    suppression_applied = False
+    suppression_reasons = []
 
-    # Strong synthetic forensic indicators
-    if synthetic_indicators >= 4:
-        score = max(score, 65)
-        escalation_triggered = True
-        escalation_reasons.append(
-            "High synthetic indicator count"
-        )
+    engine_support_count = 0
 
-    # AI-authenticity context override
-    if "ai-generated" in media_authenticity:
-        score = max(score, 70)
-        escalation_triggered = True
-        escalation_reasons.append(
-            "Forensic context identified likely AI generation"
-        )
+    if prooforigin_score >= 45:
+        engine_support_count += 1
 
-    # OpenAI Vision override
-    if "ai" in openai_label:
-        score = max(score, 75)
-        escalation_triggered = True
-        escalation_reasons.append(
-            "OpenAI Vision classified media as AI-generated"
-        )
+    if sightengine_score >= 45:
+        engine_support_count += 1
 
-    # Screenshot + synthetic combo
+    if openai_score >= 45:
+        engine_support_count += 1
+
+    # FALSE POSITIVE SAFEGUARD:
+    # If all engines are low and synthetic indicators are weak/moderate,
+    # do NOT escalate just because forensic context says synthetic.
     if (
-        screenshot_indicators >= 2
-        and synthetic_indicators >= 2
+        prooforigin_score < 35
+        and sightengine_score < 35
+        and openai_score < 35
+        and synthetic_indicators < 4
     ):
-        score = max(score, 68)
-        escalation_triggered = True
-        escalation_reasons.append(
-            "Screenshot/re-encoding with synthetic indicators"
-        )
-
-    # Final label recalculation
-    if score >= 85:
-        label = "Strong AI Consensus"
-    elif score >= 65:
-        label = "Likely AI-Generated"
-    elif score >= 45:
-        label = "AI-Assisted or Heavily Edited"
-
-    return {
-        "score": round(score, 2),
-        "label": label,
-        "escalation_triggered": escalation_triggered,
-        "escalation_reasons": escalation_reasons,
-    }
+        suppression_applied = True
+        suppression_reasons.append(
+            "Esc
