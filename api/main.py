@@ -19,6 +19,7 @@ from core.external_engines import (
 from core.consensus_engine import calculate_weighted_consensus
 from core.forensic_context import analyze_forensic_context
 from core.engine_arbitration import analyze_engine_disagreement
+from core.human_summary import generate_human_summary
 from api.feedback import router as feedback_router
 
 
@@ -120,9 +121,16 @@ async def analyze_image(file: UploadFile = File(...)):
         external_engines
     )
 
+    human_summary = generate_human_summary(
+        weighted_consensus,
+        forensic_context,
+        engine_arbitration,
+    )
+
     result["weighted_consensus"] = weighted_consensus
     result["forensic_context"] = forensic_context
     result["engine_arbitration"] = engine_arbitration
+    result["human_summary"] = human_summary
     result["file_id"] = file_id
     result["training_status"] = "logged_for_review"
 
@@ -143,6 +151,7 @@ async def analyze_image(file: UploadFile = File(...)):
     print(f"[ProofOrigin] Weighted consensus: {weighted_consensus}")
     print(f"[ProofOrigin] Forensic context: {forensic_context}")
     print(f"[ProofOrigin] Engine arbitration: {engine_arbitration}")
+    print(f"[ProofOrigin] Human summary: {human_summary}")
 
     return {
         **result,
@@ -156,9 +165,13 @@ async def analyze_image(file: UploadFile = File(...)):
             "consensus_score"
         ),
         "weightedConsensus": weighted_consensus,
+        "weighted_consensus": weighted_consensus,
         "forensicContext": forensic_context,
+        "forensic_context": forensic_context,
         "engineArbitration": engine_arbitration,
         "engine_arbitration": engine_arbitration,
+        "humanSummary": human_summary,
+        "human_summary": human_summary,
         "verdict": weighted_consensus.get("label")
         or result.get("summary", {}).get("label"),
         "engine_outputs": external_engines,
