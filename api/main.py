@@ -186,9 +186,10 @@ async def analyze_image(file: UploadFile = File(...)):
     )
 
     human_summary = generate_human_summary(
-        escalated_consensus,
-        forensic_context,
-        engine_arbitration,
+    weighted_consensus,
+    forensic_context,
+    engine_arbitration,
+    confidence_escalation,
     )
 
     result["weighted_consensus"] = escalated_consensus
