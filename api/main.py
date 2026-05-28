@@ -267,7 +267,6 @@ def settle_merkle_batch():
     batch = create_merkle_batch()
     return batch
 
-
 @app.get("/evidence/{file_id}")
 def get_evidence(file_id: str):
     evidence_path = f"data/evidence/{file_id}.json"
