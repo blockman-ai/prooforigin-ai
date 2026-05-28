@@ -58,7 +58,8 @@ def run_sightengine_analysis(image_path):
             "label": str(e),
         }
 
-        def run_openai_vision_analysis(image_path):
+
+def run_openai_vision_analysis(image_path):
     if not OPENAI_API_KEY or openai_client is None:
         return {
             "status": "unconfigured",
@@ -68,9 +69,7 @@ def run_sightengine_analysis(image_path):
 
     try:
         with open(image_path, "rb") as image_file:
-            image_b64 = base64.b64encode(
-                image_file.read()
-            ).decode("utf-8")
+            image_b64 = base64.b64encode(image_file.read()).decode("utf-8")
 
         response = openai_client.responses.create(
             model="gpt-4.1-mini",
@@ -122,12 +121,7 @@ Look for:
             ],
         )
 
-        raw_text = getattr(
-            response,
-            "output_text",
-            "",
-        ) or ""
-
+        raw_text = getattr(response, "output_text", "") or ""
         raw_text = raw_text.strip()
 
         if not raw_text:
@@ -140,7 +134,6 @@ Look for:
 
         try:
             data = json.loads(raw_text)
-
         except Exception:
             return {
                 "status": "failed",
@@ -154,22 +147,10 @@ Look for:
         return {
             "status": "complete",
             "score": score,
-            "label": data.get(
-                "label",
-                "Unknown",
-            ),
-            "confidence": data.get(
-                "confidence",
-                "Unknown",
-            ),
-            "findings": data.get(
-                "findings",
-                [],
-            ),
-            "reasoning_summary": data.get(
-                "reasoning_summary",
-                "",
-            ),
+            "label": data.get("label", "Unknown"),
+            "confidence": data.get("confidence", "Unknown"),
+            "findings": data.get("findings", []),
+            "reasoning_summary": data.get("reasoning_summary", ""),
             "raw": data,
         }
 
@@ -179,8 +160,3 @@ Look for:
             "score": None,
             "label": str(e),
         }
-
-
-
-
-
