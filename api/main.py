@@ -7,6 +7,9 @@ import json
 import os
 import hashlib
 
+from PIL import Image
+from pillow_heif import register_heif_opener
+
 from core.reasoning import ProofOriginReasoner
 from core.extractor import ImageSignalExtractor
 from core.adapter import ExtractorAdapter
@@ -20,8 +23,7 @@ from core.human_summary import generate_human_summary
 from core.confidence_escalation import apply_confidence_escalation
 from core.contradiction_resolution import resolve_forensic_contradictions
 from api.feedback import router as feedback_router
-from PIL import Image
-from pillow_heif import register_heif_opener
+
 
 register_heif_opener()
 
@@ -61,39 +63,53 @@ def root():
 async def analyze_image(file: UploadFile = File(...)):
     with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as temp_file:
         shutil.copyfileobj(file.file, temp_file)
-        image_path = temp_file.name
+        original_image_path = temp_file.name
 
-    # HEIC / HEIF automatic conversion
+    with open(original_image_path, "rb") as f:
+        original_file_bytes = f.read()
 
-if (
-    file.filename.lower().endswith(".heic")
-    or file.filename.lower().endswith(".heif")
-):
-    converted_path = image_path + ".jpg"
+    original_file_hash = hashlib.sha256(original_file_bytes).hexdigest()
+    original_file_size = len(original_file_bytes)
 
-    image = Image.open(image_path)
+    image_path = original_image_path
+    analysis_file_type = file.content_type
+    was_converted = False
 
-    image = image.convert("RGB")
+    if (
+        file.filename.lower().endswith(".heic")
+        or file.filename.lower().endswith(".heif")
+    ):
+        converted_path = image_path + ".jpg"
 
-    image.save(
-        converted_path,
-        format="JPEG",
-        quality=95,
-    )
+        image = Image.open(image_path)
+        image = image.convert("RGB")
 
-    image_path = converted_path
+        image.save(
+            converted_path,
+            format="JPEG",
+            quality=95,
+        )
+
+        image_path = converted_path
+        analysis_file_type = "image/jpeg"
+        was_converted = True
 
     with open(image_path, "rb") as f:
-        file_bytes = f.read()
+        analysis_file_bytes = f.read()
 
-    file_hash = hashlib.sha256(file_bytes).hexdigest()
-    file_size = len(file_bytes)
+    analysis_file_hash = hashlib.sha256(analysis_file_bytes).hexdigest()
+    analysis_file_size = len(analysis_file_bytes)
 
     integrity = {
-        "sha256": file_hash,
+        "original_sha256": original_file_hash,
+        "analysis_sha256": analysis_file_hash,
         "file_name": file.filename,
-        "file_type": file.content_type,
-        "file_size": file_size,
+        "original_file_type": file.content_type,
+        "analysis_file_type": analysis_file_type,
+        "original_file_size": original_file_size,
+        "analysis_file_size": analysis_file_size,
+        "was_converted": was_converted,
+        "conversion": "HEIC/HEIF to JPEG" if was_converted else "none",
         "hash_algorithm": "SHA-256",
         "verification_status": "hash_recorded",
         "tamper_evidence": "available",
@@ -168,6 +184,7 @@ if (
     result["confidence_escalation"] = final_consensus
     result["human_summary"] = human_summary
     result["contradiction_resolution"] = contradiction_resolution
+    result["integrity"] = integrity
     result["file_id"] = file_id
     result["training_status"] = "logged_for_review"
 
@@ -175,22 +192,16 @@ if (
         file_id=file_id,
         report=result,
         external_engines=external_engines,
-        file_hash=file_hash,
+        file_hash=original_file_hash,
         file_name=file.filename,
         file_type=file.content_type,
-        file_size=file_size,
+        file_size=original_file_size,
     )
 
     print(f"[ProofOrigin] Evidence logged: {file_id}")
-    print(f"[ProofOrigin] SHA-256: {file_hash}")
-    print(f"[ProofOrigin] Sightengine: {sightengine_result.get('status')}")
-    print(f"[ProofOrigin] OpenAI Vision: {openai_vision_result.get('status')}")
-    print(f"[ProofOrigin] Original consensus: {original_consensus}")
-    print(f"[ProofOrigin] Final consensus: {final_consensus}")
-    print(f"[ProofOrigin] Forensic context: {forensic_context}")
-    print(f"[ProofOrigin] Engine arbitration: {engine_arbitration}")
-    print(f"[ProofOrigin] Human summary: {human_summary}")
-    print(f"[ProofOrigin] Contradiction resolution: {contradiction_resolution}")
+    print(f"[ProofOrigin] Original SHA-256: {original_file_hash}")
+    print(f"[ProofOrigin] Analysis SHA-256: {analysis_file_hash}")
+    print(f"[ProofOrigin] Converted: {was_converted}")
 
     return {
         **result,
