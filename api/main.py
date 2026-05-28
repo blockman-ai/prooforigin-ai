@@ -22,6 +22,8 @@ from core.engine_arbitration import analyze_engine_disagreement
 from core.human_summary import generate_human_summary
 from core.confidence_escalation import apply_confidence_escalation
 from core.contradiction_resolution import resolve_forensic_contradictions
+from core.camera_authenticity import analyze_camera_authenticity
+from core.camera_provenance import classify_camera_provenance
 from api.feedback import router as feedback_router
 
 
@@ -127,6 +129,9 @@ async def analyze_image(file: UploadFile = File(...)):
 
     result = reasoner.analyze_input_data(input_data)
 
+    camera_authenticity = analyze_camera_authenticity(result, metadata)
+    camera_provenance = classify_camera_provenance(result, metadata)
+
     file_id = str(uuid.uuid4())
 
     sightengine_result = run_sightengine_analysis(image_path)
@@ -184,6 +189,8 @@ async def analyze_image(file: UploadFile = File(...)):
     result["confidence_escalation"] = final_consensus
     result["human_summary"] = human_summary
     result["contradiction_resolution"] = contradiction_resolution
+    result["camera_authenticity"] = camera_authenticity
+    result["camera_provenance"] = camera_provenance
     result["integrity"] = integrity
     result["file_id"] = file_id
     result["training_status"] = "logged_for_review"
@@ -202,6 +209,8 @@ async def analyze_image(file: UploadFile = File(...)):
     print(f"[ProofOrigin] Original SHA-256: {original_file_hash}")
     print(f"[ProofOrigin] Analysis SHA-256: {analysis_file_hash}")
     print(f"[ProofOrigin] Converted: {was_converted}")
+    print(f"[ProofOrigin] Camera authenticity: {camera_authenticity}")
+    print(f"[ProofOrigin] Camera provenance: {camera_provenance}")
 
     return {
         **result,
@@ -228,6 +237,10 @@ async def analyze_image(file: UploadFile = File(...)):
         "human_summary": human_summary,
         "contradictionResolution": contradiction_resolution,
         "contradiction_resolution": contradiction_resolution,
+        "cameraAuthenticity": camera_authenticity,
+        "camera_authenticity": camera_authenticity,
+        "cameraProvenance": camera_provenance,
+        "camera_provenance": camera_provenance,
         "verdict": final_consensus.get("label")
         or result.get("summary", {}).get("label"),
         "engine_outputs": external_engines,
