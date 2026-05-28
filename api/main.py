@@ -63,6 +63,26 @@ async def analyze_image(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, temp_file)
         image_path = temp_file.name
 
+    # HEIC / HEIF automatic conversion
+
+if (
+    file.filename.lower().endswith(".heic")
+    or file.filename.lower().endswith(".heif")
+):
+    converted_path = image_path + ".jpg"
+
+    image = Image.open(image_path)
+
+    image = image.convert("RGB")
+
+    image.save(
+        converted_path,
+        format="JPEG",
+        quality=95,
+    )
+
+    image_path = converted_path
+
     with open(image_path, "rb") as f:
         file_bytes = f.read()
 
