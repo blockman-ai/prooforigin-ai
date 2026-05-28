@@ -263,12 +263,9 @@ bitcoin_lite_anchor,
         "engine_outputs": external_engines,
     }
     
-<<<<<<< HEAD
-    @app.post("/settle/merkle")
-=======
+
 
 @app.post("/settle/merkle")
->>>>>>> dc4fb2f (Fix Merkle endpoint indentation)
 def settle_merkle_batch():
     batch = create_merkle_batch()
     return batch
