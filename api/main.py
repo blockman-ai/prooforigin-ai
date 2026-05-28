@@ -25,6 +25,7 @@ from core.contradiction_resolution import resolve_forensic_contradictions
 from core.camera_authenticity import analyze_camera_authenticity
 from core.camera_provenance import classify_camera_provenance
 from api.feedback import router as feedback_router
+from core.bitcoin_lite_anchor import queue_lite_anchor
 
 
 register_heif_opener()
