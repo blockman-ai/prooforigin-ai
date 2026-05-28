@@ -253,6 +253,10 @@ async def analyze_image(file: UploadFile = File(...)):
         "camera_authenticity": camera_authenticity,
         "cameraProvenance": camera_provenance,
         "camera_provenance": camera_provenance,
+        "bitcoinLiteAnchor":
+bitcoin_lite_anchor,
+"bitcoin_lite_anchor":
+bitcoin_lite_anchor,
         "verdict": final_consensus.get("label")
         or result.get("summary", {}).get("label"),
         "engine_outputs": external_engines,
@@ -278,5 +282,3 @@ def get_evidence(file_id: str):
         "file_id": file_id,
         "evidence": evidence,
     }
-    "bitcoinLiteAnchor": bitcoin_lite_anchor,
-"bitcoin_lite_anchor": bitcoin_lite_anchor,
