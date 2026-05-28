@@ -183,6 +183,14 @@ async def analyze_image(file: UploadFile = File(...)):
         final_consensus,
     )
 
+    bitcoin_lite_anchor = queue_lite_anchor(
+    file_id=file_id,
+    integrity=integrity,
+    verdict=final_consensus.get("label")
+    or result.get("summary", {}).get("label"),
+    report=result,
+    )
+
     result["weighted_consensus"] = final_consensus
     result["original_consensus"] = original_consensus
     result["forensic_context"] = forensic_context
