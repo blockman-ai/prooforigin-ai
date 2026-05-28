@@ -203,6 +203,7 @@ async def analyze_image(file: UploadFile = File(...)):
     result["integrity"] = integrity
     result["file_id"] = file_id
     result["training_status"] = "logged_for_review"
+    result["bitcoin_lite_anchor"] = bitcoin_lite_anchor
 
     dataset_logger.log_analysis(
         file_id=file_id,
