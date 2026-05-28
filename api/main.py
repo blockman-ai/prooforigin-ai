@@ -262,6 +262,10 @@ bitcoin_lite_anchor,
         or result.get("summary", {}).get("label"),
         "engine_outputs": external_engines,
     }
+    @app.post("/settle/merkle")
+def settle_merkle_batch():
+    batch = create_merkle_batch()
+    return batch
 
 
 @app.get("/evidence/{file_id}")
