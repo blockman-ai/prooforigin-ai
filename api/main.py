@@ -20,6 +20,8 @@ from core.human_summary import generate_human_summary
 from core.confidence_escalation import apply_confidence_escalation
 from core.contradiction_resolution import resolve_forensic_contradictions
 from api.feedback import router as feedback_router
+from PIL import Image
+from pillow_heif import register_heif_opener
 
 
 app = FastAPI(title="ProofOrigin AI API")
