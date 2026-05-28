@@ -27,6 +27,7 @@ from core.camera_provenance import classify_camera_provenance
 from api.feedback import router as feedback_router
 from core.bitcoin_lite_anchor import queue_lite_anchor
 from core.merkle_settlement import create_merkle_batch
+from core.proof_verifier import verify_proof_record
 
 
 register_heif_opener()
@@ -269,6 +270,10 @@ bitcoin_lite_anchor,
 def settle_merkle_batch():
     batch = create_merkle_batch()
     return batch
+
+@app.get("/verify-proof/{file_id}")
+def verify_proof(file_id: str):
+    return verify_proof_record(file_id)
 
 
 @app.get("/evidence/{file_id}")
