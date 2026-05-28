@@ -18,6 +18,7 @@ from core.forensic_context import analyze_forensic_context
 from core.engine_arbitration import analyze_engine_disagreement
 from core.human_summary import generate_human_summary
 from core.confidence_escalation import apply_confidence_escalation
+from core.contradiction_resolution import resolve_forensic_contradictions
 from api.feedback import router as feedback_router
 
 
@@ -130,12 +131,20 @@ async def analyze_image(file: UploadFile = File(...)):
         final_consensus,
     )
 
+    contradiction_resolution = resolve_forensic_contradictions(
+        original_consensus,
+        forensic_context,
+        engine_arbitration,
+        final_consensus,
+    )
+
     result["weighted_consensus"] = final_consensus
     result["original_consensus"] = original_consensus
     result["forensic_context"] = forensic_context
     result["engine_arbitration"] = engine_arbitration
     result["confidence_escalation"] = final_consensus
     result["human_summary"] = human_summary
+    result["contradiction_resolution"] = contradiction_resolution
     result["file_id"] = file_id
     result["training_status"] = "logged_for_review"
 
@@ -158,6 +167,7 @@ async def analyze_image(file: UploadFile = File(...)):
     print(f"[ProofOrigin] Forensic context: {forensic_context}")
     print(f"[ProofOrigin] Engine arbitration: {engine_arbitration}")
     print(f"[ProofOrigin] Human summary: {human_summary}")
+    print(f"[ProofOrigin] Contradiction resolution: {contradiction_resolution}")
 
     return {
         **result,
@@ -182,6 +192,8 @@ async def analyze_image(file: UploadFile = File(...)):
         "engine_arbitration": engine_arbitration,
         "humanSummary": human_summary,
         "human_summary": human_summary,
+        "contradictionResolution": contradiction_resolution,
+        "contradiction_resolution": contradiction_resolution,
         "verdict": final_consensus.get("label")
         or result.get("summary", {}).get("label"),
         "engine_outputs": external_engines,
