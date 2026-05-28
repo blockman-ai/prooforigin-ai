@@ -10,7 +10,7 @@ def analyze_camera_authenticity(report, metadata=None):
     score = 0
     findings = []
 
-    camera_terms = {
+    positive_terms = {
         "natural lighting": 15,
         "consistent lighting": 12,
         "realistic texture": 12,
@@ -21,9 +21,10 @@ def analyze_camera_authenticity(report, metadata=None):
         "motion blur": 8,
         "camera": 10,
         "photograph": 12,
-        "real": 10,
+        "realistic": 10,
         "printed text": 8,
         "physical": 10,
+        "human-taken": 15,
     }
 
     negative_terms = {
@@ -37,15 +38,15 @@ def analyze_camera_authenticity(report, metadata=None):
         "ai-generated": -20,
     }
 
-    for term, weight in camera_terms.items():
+    for term, weight in positive_terms.items():
         if term in visual_text:
             score += weight
-            findings.append(f"Camera-authenticity indicator detected: {term}")
+            findings.append(f"Camera indicator detected: {term}")
 
     for term, weight in negative_terms.items():
         if term in visual_text:
             score += weight
-            findings.append(f"Camera-authenticity concern detected: {term}")
+            findings.append(f"Camera concern detected: {term}")
 
     if metadata and len(metadata.keys()) > 0:
         score += 15
