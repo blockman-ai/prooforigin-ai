@@ -278,3 +278,5 @@ def get_evidence(file_id: str):
         "file_id": file_id,
         "evidence": evidence,
     }
+    "bitcoinLiteAnchor": bitcoin_lite_anchor,
+"bitcoin_lite_anchor": bitcoin_lite_anchor,
