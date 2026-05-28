@@ -23,6 +23,7 @@ from api.feedback import router as feedback_router
 from PIL import Image
 from pillow_heif import register_heif_opener
 
+register_heif_opener()
 
 app = FastAPI(title="ProofOrigin AI API")
 
