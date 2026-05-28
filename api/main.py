@@ -73,6 +73,8 @@ async def analyze_image(file: UploadFile = File(...)):
     original_file_hash = hashlib.sha256(original_file_bytes).hexdigest()
     original_file_size = len(original_file_bytes)
 
+    original_metadata = extractor.extract_metadata(original_image_path)
+
     image_path = original_image_path
     analysis_file_type = file.content_type
     was_converted = False
@@ -85,12 +87,7 @@ async def analyze_image(file: UploadFile = File(...)):
 
         image = Image.open(image_path)
         image = image.convert("RGB")
-
-        image.save(
-            converted_path,
-            format="JPEG",
-            quality=95,
-        )
+        image.save(converted_path, format="JPEG", quality=95)
 
         image_path = converted_path
         analysis_file_type = "image/jpeg"
@@ -101,6 +98,10 @@ async def analyze_image(file: UploadFile = File(...)):
 
     analysis_file_hash = hashlib.sha256(analysis_file_bytes).hexdigest()
     analysis_file_size = len(analysis_file_bytes)
+
+    converted_metadata = extractor.extract_metadata(image_path)
+
+    metadata = original_metadata if original_metadata else converted_metadata
 
     integrity = {
         "original_sha256": original_file_hash,
@@ -117,7 +118,6 @@ async def analyze_image(file: UploadFile = File(...)):
         "tamper_evidence": "available",
     }
 
-    metadata = extractor.extract_metadata(image_path)
     extracted_signals = extractor.detect_basic_signals(metadata)
     vision_findings = vision_engine.analyze_image(image_path)
 
@@ -219,6 +219,8 @@ async def analyze_image(file: UploadFile = File(...)):
         if final_consensus.get("score") is not None
         else result.get("summary", {}).get("ai_score", 0),
         "metadata": metadata,
+        "originalMetadata": original_metadata,
+        "convertedMetadata": converted_metadata,
         "integrity": integrity,
         "proofOriginScore": result.get("consensus_analysis", {}).get(
             "consensus_score"
