@@ -4,12 +4,33 @@ import os
 import requests
 from openai import OpenAI
 
-
 SIGHTENGINE_USER = os.getenv("SIGHTENGINE_USER")
 SIGHTENGINE_SECRET = os.getenv("SIGHTENGINE_SECRET")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+ENGINE_TIMEOUT_SECONDS = int(os.getenv("PROOFORIGIN_ENGINE_TIMEOUT_SECONDS", "60"))
+
+openai_client = (
+    OpenAI(api_key=OPENAI_API_KEY, timeout=ENGINE_TIMEOUT_SECONDS)
+    if OPENAI_API_KEY
+    else None
+)
+
+
+def _sightengine_unavailable(message):
+    return {
+        "status": "failed",
+        "score": None,
+        "label": message,
+    }
+
+
+def _openai_unavailable(message):
+    return {
+        "status": "failed",
+        "score": None,
+        "label": message,
+    }
 
 
 def run_sightengine_analysis(image_path):
@@ -30,10 +51,18 @@ def run_sightengine_analysis(image_path):
                     "api_user": SIGHTENGINE_USER,
                     "api_secret": SIGHTENGINE_SECRET,
                 },
-                timeout=60,
+                timeout=ENGINE_TIMEOUT_SECONDS,
             )
 
+        if response.status_code >= 500:
+            return _sightengine_unavailable("Sightengine service unavailable")
+
         data = response.json()
+
+        if response.status_code >= 400 or data.get("error"):
+            error_message = data.get("error", {}).get("message", "Sightengine request failed")
+            return _sightengine_unavailable(str(error_message))
+
         ai_score = data.get("type", {}).get("ai_generated", 0)
         score_percent = round(float(ai_score) * 100)
 
@@ -48,15 +77,16 @@ def run_sightengine_analysis(image_path):
             "status": "complete",
             "score": score_percent,
             "label": label,
-            "raw": data,
         }
 
+    except requests.Timeout:
+        return _sightengine_unavailable("Sightengine request timed out")
+    except requests.RequestException as e:
+        return _sightengine_unavailable(f"Sightengine request failed: {e}")
+    except (ValueError, TypeError, KeyError) as e:
+        return _sightengine_unavailable(f"Sightengine response parsing failed: {e}")
     except Exception as e:
-        return {
-            "status": "failed",
-            "score": None,
-            "label": str(e),
-        }
+        return _sightengine_unavailable(str(e))
 
 
 def run_openai_vision_analysis(image_path):
@@ -125,16 +155,11 @@ Look for:
         raw_text = raw_text.strip()
 
         if not raw_text:
-            return {
-                "status": "failed",
-                "score": None,
-                "label": "Empty OpenAI response",
-                "details": "OpenAI returned no output_text.",
-            }
+            return _openai_unavailable("Empty OpenAI response")
 
         try:
             data = json.loads(raw_text)
-        except Exception:
+        except json.JSONDecodeError:
             return {
                 "status": "failed",
                 "score": None,
@@ -151,12 +176,12 @@ Look for:
             "confidence": data.get("confidence", "Unknown"),
             "findings": data.get("findings", []),
             "reasoning_summary": data.get("reasoning_summary", ""),
-            "raw": data,
         }
 
+    except TimeoutError:
+        return _openai_unavailable("OpenAI request timed out")
     except Exception as e:
-        return {
-            "status": "failed",
-            "score": None,
-            "label": str(e),
-        }
+        error_name = type(e).__name__
+        if "timeout" in error_name.lower() or "timeout" in str(e).lower():
+            return _openai_unavailable("OpenAI request timed out")
+        return _openai_unavailable(str(e))

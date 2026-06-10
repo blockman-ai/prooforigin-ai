@@ -37,4 +37,5 @@ def evaluate_dataset():
     print(f"\nTOTAL IMAGES: {total_images}")
 
 if __name__ == "__main__":
-    evaluate_dataset()print("Evaluation pipeline coming soon.")
+    evaluate_dataset()
+    print("Evaluation pipeline coming soon.")

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter
 from pydantic import BaseModel
 import json
@@ -11,8 +13,8 @@ router = APIRouter()
 class FeedbackPayload(BaseModel):
     file_id: str
     user_label: str
-    user_confidence: str | None = None
-    notes: str | None = None
+    user_confidence: Optional[str] = None
+    notes: Optional[str] = None
 
 
 VALID_LABELS = {
