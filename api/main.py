@@ -1,5 +1,6 @@
 from fastapi import Depends, FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 import tempfile
 import uuid
 import json
@@ -8,13 +9,7 @@ import hashlib
 from datetime import datetime
 
 from PIL import Image
-from pillow_heif import register_heif_opener
 
-from core.reasoning import ProofOriginReasoner
-from core.extractor import ImageSignalExtractor
-from core.adapter import ExtractorAdapter
-from core.vision import VisionForensicsEngine
-from core.dataset_logger import DatasetLogger
 from core.external_engines import run_sightengine_analysis, run_openai_vision_analysis
 from core.consensus_engine import calculate_weighted_consensus
 from core.forensic_context import analyze_forensic_context
@@ -50,11 +45,24 @@ from api.security import (
 from api.response_utils import build_analyze_response
 from core.policy_engine import apply_constitution_policy, build_engine_snapshot_hash
 from core.evidence_schema import build_evidence_record
+from api.runtime import (
+    ensure_heif_opener,
+    ensure_runtime_dirs,
+    get_adapter,
+    get_dataset_logger,
+    get_extractor,
+    get_reasoner,
+    get_vision_engine,
+)
 
 
-register_heif_opener()
+@asynccontextmanager
+async def lifespan(app):
+    ensure_runtime_dirs()
+    yield
 
-app = FastAPI(title="ProofOrigin AI API")
+
+app = FastAPI(title="ProofOrigin AI API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -69,12 +77,6 @@ app.add_middleware(
 )
 
 app.include_router(feedback_router)
-
-reasoner = ProofOriginReasoner()
-extractor = ImageSignalExtractor()
-adapter = ExtractorAdapter()
-vision_engine = VisionForensicsEngine()
-dataset_logger = DatasetLogger()
 
 
 def _cleanup_temp_paths(temp_paths):
@@ -95,11 +97,26 @@ def root():
     }
 
 
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "service": "ProofOrigin AI",
+    }
+
+
 @app.post("/analyze")
 async def analyze_image(
     file: UploadFile = File(...),
     _: None = Depends(validate_optional_api_key),
 ):
+    ensure_heif_opener()
+    reasoner = get_reasoner()
+    extractor = get_extractor()
+    adapter = get_adapter()
+    vision_engine = get_vision_engine()
+    dataset_logger = get_dataset_logger()
+
     validate_upload_file(file)
 
     temp_paths = []

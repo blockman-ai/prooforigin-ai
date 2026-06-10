@@ -1,0 +1,4 @@
+-r requirements.txt
+opencv-python
+pandas
+scikit-learn
