@@ -6,8 +6,12 @@ import json
 import os
 from datetime import datetime
 
+from core.bundle_store import append_feedback_event, load_evidence_bundle
+
 
 router = APIRouter()
+
+EVIDENCE_PATH = "data/evidence"
 
 
 class FeedbackPayload(BaseModel):
@@ -53,9 +57,11 @@ def submit_feedback(payload: FeedbackPayload):
             "allowed_labels": list(VALID_LABELS),
         }
 
+    timestamp = datetime.utcnow().isoformat()
+
     entry = {
         "file_id": payload.file_id,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": timestamp,
         "user_label": label,
         "user_confidence": payload.user_confidence,
         "notes": payload.notes,
@@ -65,38 +71,9 @@ def submit_feedback(payload: FeedbackPayload):
     with open("data/user_feedback_log.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps(entry) + "\n")
 
-    evidence_path = f"data/evidence/{payload.file_id}.json"
-
-    if os.path.exists(evidence_path):
-        with open(evidence_path, "r", encoding="utf-8") as f:
-            evidence = json.load(f)
-
-        feedback = evidence.get("feedback", {})
-
-        feedback.setdefault("correct_votes", 0)
-        feedback.setdefault("wrong_votes", 0)
-        feedback.setdefault("ai_votes", 0)
-        feedback.setdefault("human_votes", 0)
-        feedback.setdefault("edited_votes", 0)
-        feedback.setdefault("disputed_votes", 0)
-
-        if label == "correct":
-            feedback["correct_votes"] += 1
-        elif label == "wrong":
-            feedback["wrong_votes"] += 1
-        elif label == "ai":
-            feedback["ai_votes"] += 1
-        elif label == "human":
-            feedback["human_votes"] += 1
-        elif label == "edited":
-            feedback["edited_votes"] += 1
-        elif label == "disputed":
-            feedback["disputed_votes"] += 1
-
-        evidence["feedback"] = feedback
-
-        with open(evidence_path, "w", encoding="utf-8") as f:
-            json.dump(evidence, f, indent=2)
+    bundle = load_evidence_bundle(EVIDENCE_PATH, payload.file_id)
+    if bundle:
+        append_feedback_event(EVIDENCE_PATH, payload.file_id, entry)
 
     print(f"[ProofOrigin] Feedback received for {payload.file_id}: {label}")
 
@@ -105,6 +82,7 @@ def submit_feedback(payload: FeedbackPayload):
         "status": "feedback_received",
         "file_id": payload.file_id,
         "label": label,
+        "bundle_mutated": False,
     }
 
 
@@ -155,4 +133,4 @@ def feedback_stats():
     return {
         "success": True,
         "stats": stats,
-                }
+    }

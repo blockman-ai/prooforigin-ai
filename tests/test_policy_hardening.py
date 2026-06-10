@@ -127,6 +127,8 @@ class PolicyHardeningTests(unittest.TestCase):
         self.assertEqual(evidence["decision_tier"], "caution")
         self.assertEqual(evidence["constitution_version"], "1.0.0")
         self.assertEqual(evidence["policy_version"], POLICY_VERSION)
+        self.assertEqual(evidence["report_version"], 1)
+        self.assertEqual(evidence["published_at"], "2026-01-01T00:00:00")
         self.assertIn("policy", evidence)
 
 

@@ -72,10 +72,11 @@ class StabilizationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             evidence_dir = os.path.join(tmpdir, "data", "evidence")
             os.makedirs(evidence_dir)
-            evidence_path = os.path.join(evidence_dir, "test-file-id.json")
+            file_id = "test-file-id"
 
-            with open(evidence_path, "w", encoding="utf-8") as handle:
-                json.dump(evidence, handle)
+            from core.bundle_store import write_bundle_once
+
+            write_bundle_once(evidence_dir, file_id, evidence)
 
             original_cwd = os.getcwd()
             os.chdir(tmpdir)
@@ -85,6 +86,7 @@ class StabilizationTests(unittest.TestCase):
             finally:
                 os.chdir(original_cwd)
 
+        self.assertTrue(result["hash_match"])
         self.assertTrue(result["verified"])
         self.assertEqual(result["original_sha256"], "abc123")
         self.assertEqual(result["analysis_sha256"], "def456")
