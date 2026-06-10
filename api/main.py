@@ -1,10 +1,11 @@
-from fastapi import Depends, FastAPI, File, UploadFile
+from fastapi import Depends, FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import tempfile
 import uuid
 import json
 import os
 import hashlib
+from datetime import datetime
 
 from PIL import Image
 from pillow_heif import register_heif_opener
@@ -27,7 +28,9 @@ from core.engine_sanitize import sanitize_external_engines
 from api.feedback import router as feedback_router
 from core.bitcoin_lite_anchor import queue_lite_anchor
 from core.merkle_settlement import create_merkle_batch
-from core.proof_verifier import verify_proof_record
+from core.proof_verifier import verify_proof_record, verify_uploaded_file_hash
+from core.bundle_store import load_evidence_bundle
+from core.public_report import PUBLIC_REPORT_FIELDS, build_public_report
 from api.security import (
     read_upload_with_limit,
     require_api_key,
@@ -36,6 +39,7 @@ from api.security import (
 )
 from api.response_utils import build_analyze_response
 from core.policy_engine import apply_constitution_policy, build_engine_snapshot_hash
+from core.evidence_schema import build_evidence_record
 
 
 register_heif_opener()
@@ -223,14 +227,6 @@ async def analyze_image(
 
         engine_snapshot_hash = build_engine_snapshot_hash(external_engines)
 
-        bitcoin_lite_anchor = queue_lite_anchor(
-            file_id=file_id,
-            integrity=integrity,
-            verdict=final_consensus.get("label")
-            or result.get("summary", {}).get("label"),
-            report=result,
-        )
-
         result["weighted_consensus"] = final_consensus
         result["original_consensus"] = original_consensus
         result["forensic_context"] = forensic_context
@@ -243,7 +239,6 @@ async def analyze_image(
         result["integrity"] = integrity
         result["file_id"] = file_id
         result["training_status"] = "logged_for_review"
-        result["bitcoin_lite_anchor"] = bitcoin_lite_anchor
         result["policy"] = policy_result
         result["decision_tier"] = policy_result["decision_tier"]
         result["constitution_version"] = policy_result["constitution_version"]
@@ -251,6 +246,29 @@ async def analyze_image(
         result["uncertainty_notes"] = policy_result["uncertainty_notes"]
         result["warnings"] = policy_result["warnings"]
         result["engine_snapshot_hash"] = engine_snapshot_hash
+
+        analysis_timestamp = datetime.utcnow().isoformat()
+        evidence_preview = build_evidence_record(
+            file_id=file_id,
+            timestamp=analysis_timestamp,
+            report=result,
+            external_engines=external_engines,
+            file_hash=original_file_hash,
+            file_name=file.filename,
+            file_type=file.content_type,
+            file_size=original_file_size,
+            policy=policy_result,
+        )
+        evidence_bundle_hash = evidence_preview["evidence_bundle_hash"]
+
+        bitcoin_lite_anchor = queue_lite_anchor(
+            file_id=file_id,
+            integrity=integrity,
+            verdict=final_consensus.get("label")
+            or result.get("summary", {}).get("label"),
+            evidence_bundle_hash=evidence_bundle_hash,
+        )
+        result["bitcoin_lite_anchor"] = bitcoin_lite_anchor
 
         log_entry = dataset_logger.log_analysis(
             file_id=file_id,
@@ -260,6 +278,7 @@ async def analyze_image(
             file_name=file.filename,
             file_type=file.content_type,
             file_size=original_file_size,
+            timestamp=analysis_timestamp,
         )
 
         result["evidence_bundle_hash"] = log_entry.get("evidence_bundle_hash")
@@ -308,22 +327,50 @@ def verify_proof(
     return verify_proof_record(file_id)
 
 
+@app.post("/verify")
+async def verify_uploaded_file(
+    file_id: str = Form(...),
+    file: UploadFile = File(...),
+):
+    validate_upload_file(file)
+    file_bytes = await read_upload_with_limit(file)
+    uploaded_sha256 = hashlib.sha256(file_bytes).hexdigest()
+    return verify_uploaded_file_hash(file_id, uploaded_sha256)
+
+
+@app.get("/report/{file_id}")
+def get_public_report(file_id: str):
+    evidence = load_evidence_bundle("data/evidence", file_id)
+
+    if evidence is None:
+        return {
+            "success": False,
+            "error": "Report not found",
+            "file_id": file_id,
+        }
+
+    report = build_public_report(evidence)
+
+    return {
+        "success": True,
+        "report": report,
+        "schema_fields": list(PUBLIC_REPORT_FIELDS),
+    }
+
+
 @app.get("/evidence/{file_id}")
 def get_evidence(
     file_id: str,
     _: None = Depends(require_api_key),
 ):
-    evidence_path = f"data/evidence/{file_id}.json"
+    evidence = load_evidence_bundle("data/evidence", file_id)
 
-    if not os.path.exists(evidence_path):
+    if evidence is None:
         return {
             "success": False,
             "error": "Evidence record not found",
             "file_id": file_id,
         }
-
-    with open(evidence_path, "r", encoding="utf-8") as f:
-        evidence = json.load(f)
 
     if "engine_outputs" in evidence:
         evidence["engine_outputs"] = sanitize_external_engines(evidence["engine_outputs"])

@@ -4,6 +4,7 @@ from datetime import datetime
 
 from core.evidence_schema import build_evidence_record
 from core.engine_sanitize import sanitize_external_engines
+from core.bundle_store import BundleAlreadyExistsError, write_bundle_once
 
 
 class DatasetLogger:
@@ -34,8 +35,9 @@ class DatasetLogger:
         file_name=None,
         file_type=None,
         file_size=None,
+        timestamp=None,
     ):
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = timestamp or datetime.utcnow().isoformat()
         engines = sanitize_external_engines(external_engines or {})
 
         prooforigin_score = report.get("summary", {}).get("ai_score")
@@ -59,11 +61,16 @@ class DatasetLogger:
         integrity = evidence_record["integrity"]
         training_data = evidence_record["training_data"]
 
-        evidence_file = os.path.join(self.evidence_path, f"{file_id}.json")
-        training_file = os.path.join(self.training_path, f"{file_id}.json")
+        try:
+            evidence_file = write_bundle_once(
+                self.evidence_path,
+                file_id,
+                evidence_record,
+            )
+        except BundleAlreadyExistsError as exc:
+            raise ValueError(str(exc)) from exc
 
-        with open(evidence_file, "w", encoding="utf-8") as f:
-            json.dump(evidence_record, f, indent=2)
+        training_file = os.path.join(self.training_path, f"{file_id}.json")
 
         with open(training_file, "w", encoding="utf-8") as f:
             json.dump(training_data, f, indent=2)
@@ -119,12 +126,14 @@ class DatasetLogger:
             "decision_tier": evidence_record.get("decision_tier"),
             "constitution_version": evidence_record.get("constitution_version"),
             "policy_version": evidence_record.get("policy_version"),
+            "report_version": evidence_record.get("report_version"),
+            "published_at": evidence_record.get("published_at"),
         }
 
         with open(self.log_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry) + "\n")
 
-        print(f"[ProofOrigin] Evidence file created: {evidence_file}")
+        print(f"[ProofOrigin] Evidence bundle sealed: {evidence_file}")
         print(f"[ProofOrigin] Training file created: {training_file}")
 
         if disagreement_record:

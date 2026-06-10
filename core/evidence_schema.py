@@ -4,6 +4,21 @@ from core.policy_engine import (
     build_evidence_bundle_hash,
     build_policy_hash,
 )
+from core.protocol import (
+    PROTOCOL_DOES_NOT_CLAIM,
+    PROTOCOL_INVARIANT,
+    PROTOCOL_NAME,
+    PROTOCOL_VERSION,
+)
+
+
+def build_protocol_metadata():
+    return {
+        "protocol_name": PROTOCOL_NAME,
+        "protocol_version": PROTOCOL_VERSION,
+        "protocol_invariant": PROTOCOL_INVARIANT,
+        "protocol_claim_boundary": PROTOCOL_DOES_NOT_CLAIM,
+    }
 
 
 def build_integrity_from_report(report, file_hash=None, file_name=None, file_type=None, file_size=None):
@@ -160,6 +175,9 @@ def build_evidence_record(
     return {
         "report_id": file_id,
         "created_at": timestamp,
+        "published_at": timestamp,
+        "report_version": 1,
+        **build_protocol_metadata(),
         "integrity": integrity,
         "evidence_bundle_hash": evidence_bundle_hash,
         "policy_hash": policy_hash,

@@ -4,6 +4,9 @@ import hashlib
 import uuid
 from datetime import datetime, timezone
 
+from core.bitcoin_lite_anchor import extract_anchor_leaf
+from core.protocol import ANCHOR_LEAF_FIELD
+
 PENDING_PATH = "data/anchors/anchor_pending.jsonl"
 BATCH_DIR = "data/anchors/batches"
 
@@ -81,13 +84,13 @@ def create_merkle_batch():
             "count": 0,
         }
 
-    report_hashes = [
-        record.get("report_hash")
+    anchor_leaves = [
+        extract_anchor_leaf(record)
         for record in pending
-        if record.get("report_hash")
+        if extract_anchor_leaf(record)
     ]
 
-    merkle_root = build_merkle_root(report_hashes)
+    merkle_root = build_merkle_root(anchor_leaves)
 
     batch_id = str(uuid.uuid4())
 
@@ -99,6 +102,7 @@ def create_merkle_batch():
         "status": "merkle_root_created",
         "record_count": len(pending),
         "merkle_root": merkle_root,
+        "anchor_leaf_field": ANCHOR_LEAF_FIELD,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "bitcoin_anchor_status": "not_broadcast",
         "bitcoin_txid": None,
