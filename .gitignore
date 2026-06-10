@@ -216,3 +216,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Runtime evidence and local analysis artifacts
+data/anchors/
+data/evidence/*/
+!data/evidence/README.md
+data/training/
+data/realtime_analysis_log.jsonl
+
+# Trained ML artifacts (commit pipeline only, not weights/metrics until real training)
+ml/models/*.pt
+ml/models/*.pth
+ml/models/metrics.json
+ml/datasets/real/*
+!ml/datasets/real/.gitkeep
+ml/datasets/ai/*
+!ml/datasets/ai/.gitkeep

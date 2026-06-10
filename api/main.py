@@ -64,14 +64,17 @@ async def lifespan(app):
 
 app = FastAPI(title="ProofOrigin AI API", lifespan=lifespan)
 
+CORS_ALLOWED_ORIGINS = [
+    "https://prooforigin.org",
+    "https://www.prooforigin.org",
+    "https://prooforigin-site.vercel.app",
+    "https://prooforigin.vercel.app",
+    "http://localhost:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://prooforigin.org",
-        "https://www.prooforigin.org",
-        "https://prooforigin-site.vercel.app",
-        "http://localhost:3000",
-    ],
+    allow_origins=CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
