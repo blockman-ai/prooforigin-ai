@@ -1,6 +1,6 @@
 from core.engine_sanitize import sanitize_external_engines
 
-RESPONSE_SCHEMA_VERSION = "1.0"
+RESPONSE_SCHEMA_VERSION = "1.1"
 
 LEGACY_DUPLICATE_KEYS_NOTE = (
     "camelCase and snake_case fields are duplicated for backward compatibility; "
@@ -27,6 +27,7 @@ def build_analyze_response(
     external_engines,
 ):
     sanitized_engines = sanitize_external_engines(external_engines)
+    policy = result.get("policy", {})
 
     response = {
         **result,
@@ -62,6 +63,23 @@ def build_analyze_response(
         "verdict": final_consensus.get("label")
         or result.get("summary", {}).get("label"),
         "engine_outputs": sanitized_engines,
+        "decision_tier": result.get("decision_tier"),
+        "decisionTier": result.get("decision_tier"),
+        "policy": policy,
+        "constitution_version": result.get("constitution_version"),
+        "constitutionVersion": result.get("constitution_version"),
+        "confidence_in_estimate": result.get("confidence_in_estimate"),
+        "confidenceInEstimate": result.get("confidence_in_estimate"),
+        "uncertainty_notes": result.get("uncertainty_notes", []),
+        "uncertaintyNotes": result.get("uncertainty_notes", []),
+        "evidence_bundle_hash": result.get("evidence_bundle_hash"),
+        "evidenceBundleHash": result.get("evidence_bundle_hash"),
+        "policy_hash": result.get("policy_hash"),
+        "policyHash": result.get("policy_hash"),
+        "engine_snapshot_hash": result.get("engine_snapshot_hash"),
+        "engineSnapshotHash": result.get("engine_snapshot_hash"),
+        "public_label": policy.get("public_label"),
+        "publicLabel": policy.get("public_label"),
         "response_meta": {
             "schema_version": RESPONSE_SCHEMA_VERSION,
             "legacy_duplicate_keys": LEGACY_DUPLICATE_KEYS_NOTE,

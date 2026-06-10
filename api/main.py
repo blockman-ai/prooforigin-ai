@@ -35,6 +35,7 @@ from api.security import (
     validate_upload_file,
 )
 from api.response_utils import build_analyze_response
+from core.policy_engine import apply_constitution_policy, build_engine_snapshot_hash
 
 
 register_heif_opener()
@@ -211,6 +212,17 @@ async def analyze_image(
             final_consensus,
         )
 
+        policy_result = apply_constitution_policy(
+            final_consensus=final_consensus,
+            original_consensus=original_consensus,
+            engine_arbitration=engine_arbitration,
+            external_engines=external_engines,
+            forensic_context=forensic_context,
+            existing_warnings=result.get("warnings", []),
+        )
+
+        engine_snapshot_hash = build_engine_snapshot_hash(external_engines)
+
         bitcoin_lite_anchor = queue_lite_anchor(
             file_id=file_id,
             integrity=integrity,
@@ -232,8 +244,15 @@ async def analyze_image(
         result["file_id"] = file_id
         result["training_status"] = "logged_for_review"
         result["bitcoin_lite_anchor"] = bitcoin_lite_anchor
+        result["policy"] = policy_result
+        result["decision_tier"] = policy_result["decision_tier"]
+        result["constitution_version"] = policy_result["constitution_version"]
+        result["confidence_in_estimate"] = policy_result["confidence_in_estimate"]
+        result["uncertainty_notes"] = policy_result["uncertainty_notes"]
+        result["warnings"] = policy_result["warnings"]
+        result["engine_snapshot_hash"] = engine_snapshot_hash
 
-        dataset_logger.log_analysis(
+        log_entry = dataset_logger.log_analysis(
             file_id=file_id,
             report=result,
             external_engines=external_engines,
@@ -242,6 +261,9 @@ async def analyze_image(
             file_type=file.content_type,
             file_size=original_file_size,
         )
+
+        result["evidence_bundle_hash"] = log_entry.get("evidence_bundle_hash")
+        result["policy_hash"] = log_entry.get("policy_hash")
 
         print(f"[ProofOrigin] Evidence logged: {file_id}")
         print(f"[ProofOrigin] Original SHA-256: {original_file_hash}")

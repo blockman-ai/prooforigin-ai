@@ -1,4 +1,9 @@
 from core.engine_sanitize import sanitize_external_engines
+from core.policy_engine import (
+    build_engine_snapshot_hash,
+    build_evidence_bundle_hash,
+    build_policy_hash,
+)
 
 
 def build_integrity_from_report(report, file_hash=None, file_name=None, file_type=None, file_size=None):
@@ -21,6 +26,37 @@ def build_integrity_from_report(report, file_hash=None, file_name=None, file_typ
     }
 
 
+def build_evidence_bundle_payload(
+    file_id,
+    timestamp,
+    integrity,
+    report,
+    policy,
+    engine_snapshot_hash,
+    policy_hash,
+):
+    weighted_consensus = report.get("weighted_consensus", {})
+
+    return {
+        "report_id": file_id,
+        "created_at": timestamp,
+        "integrity": integrity,
+        "summary": report.get("summary"),
+        "weighted_consensus": weighted_consensus,
+        "decision_tier": report.get("decision_tier"),
+        "policy_summary": {
+            "decision_tier": policy.get("decision_tier"),
+            "public_label": policy.get("public_label"),
+            "public_label_cap": policy.get("public_label_cap"),
+            "policy_version": policy.get("policy_version"),
+            "constitution_version": policy.get("constitution_version"),
+            "confidence_in_estimate": policy.get("confidence_in_estimate"),
+        },
+        "engine_snapshot_hash": engine_snapshot_hash,
+        "policy_hash": policy_hash,
+    }
+
+
 def build_evidence_record(
     file_id,
     timestamp,
@@ -31,8 +67,10 @@ def build_evidence_record(
     file_name=None,
     file_type=None,
     file_size=None,
+    policy=None,
 ):
     engines = sanitize_external_engines(external_engines or {})
+    policy = policy or {}
     integrity = build_integrity_from_report(
         report,
         file_hash=file_hash,
@@ -45,6 +83,24 @@ def build_evidence_record(
     sightengine_score = engines.get("sightengine", {}).get("score")
     openai_vision_score = engines.get("openai_vision", {}).get("score")
     weighted_consensus = report.get("weighted_consensus", {})
+
+    policy_hash = policy.get("policy_hash") or build_policy_hash()
+    engine_snapshot_hash = report.get("engine_snapshot_hash") or build_engine_snapshot_hash(
+        external_engines or {}
+    )
+
+    evidence_bundle_payload = build_evidence_bundle_payload(
+        file_id=file_id,
+        timestamp=timestamp,
+        integrity=integrity,
+        report=report,
+        policy=policy,
+        engine_snapshot_hash=engine_snapshot_hash,
+        policy_hash=policy_hash,
+    )
+    evidence_bundle_hash = report.get("evidence_bundle_hash") or build_evidence_bundle_hash(
+        evidence_bundle_payload
+    )
 
     feedback = user_feedback or {
         "human_votes": 0,
@@ -76,6 +132,10 @@ def build_evidence_record(
         "bitcoin_lite_anchor": report.get("bitcoin_lite_anchor"),
         "file_id": file_id,
         "training_status": report.get("training_status"),
+        "decision_tier": report.get("decision_tier"),
+        "policy": policy,
+        "confidence_in_estimate": report.get("confidence_in_estimate"),
+        "uncertainty_notes": report.get("uncertainty_notes", []),
     }
 
     training_data = {
@@ -92,13 +152,25 @@ def build_evidence_record(
         "trace": report.get("trace_analysis", {}),
         "human_feedback": feedback,
         "training_timestamp": timestamp,
+        "decision_tier": report.get("decision_tier"),
+        "policy_version": policy.get("policy_version"),
+        "constitution_version": policy.get("constitution_version"),
     }
 
     return {
         "report_id": file_id,
         "created_at": timestamp,
         "integrity": integrity,
+        "evidence_bundle_hash": evidence_bundle_hash,
+        "policy_hash": policy_hash,
+        "engine_snapshot_hash": engine_snapshot_hash,
+        "decision_tier": report.get("decision_tier"),
+        "constitution_version": policy.get("constitution_version"),
+        "policy_version": policy.get("policy_version"),
+        "confidence_in_estimate": report.get("confidence_in_estimate"),
+        "uncertainty_notes": report.get("uncertainty_notes", []),
         "report": stored_report,
+        "policy": policy,
         "prooforigin": {
             "score": prooforigin_score,
             "classification": report.get("summary", {}).get("label"),

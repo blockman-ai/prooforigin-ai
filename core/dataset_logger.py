@@ -53,6 +53,7 @@ class DatasetLogger:
             file_name=file_name,
             file_type=file_type,
             file_size=file_size,
+            policy=report.get("policy"),
         )
 
         integrity = evidence_record["integrity"]
@@ -112,6 +113,12 @@ class DatasetLogger:
             "external_engines": engines,
             "user_feedback": user_feedback,
             "training_status": "pending_review",
+            "evidence_bundle_hash": evidence_record.get("evidence_bundle_hash"),
+            "policy_hash": evidence_record.get("policy_hash"),
+            "engine_snapshot_hash": evidence_record.get("engine_snapshot_hash"),
+            "decision_tier": evidence_record.get("decision_tier"),
+            "constitution_version": evidence_record.get("constitution_version"),
+            "policy_version": evidence_record.get("policy_version"),
         }
 
         with open(self.log_path, "a", encoding="utf-8") as f:

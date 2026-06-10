@@ -1,32 +1,63 @@
-def calculate_weighted_consensus(engines):
-    weights = {
-        "prooforigin": 0.15,
-        "sightengine": 0.10,
-        "openai_vision": 0.75,
+EXTERNAL_VENDOR_ENGINES = frozenset({"sightengine", "openai_vision"})
+MAX_EXTERNAL_VENDOR_WEIGHT = 0.40
+
+BASE_WEIGHTS = {
+    "prooforigin": 0.35,
+    "sightengine": 0.25,
+    "openai_vision": 0.40,
+}
+
+
+def _cap_and_normalize_weights(active_weights):
+    capped = {}
+
+    for engine_name, weight in active_weights.items():
+        if engine_name in EXTERNAL_VENDOR_ENGINES:
+            capped[engine_name] = min(weight, MAX_EXTERNAL_VENDOR_WEIGHT)
+        else:
+            capped[engine_name] = weight
+
+    total = sum(capped.values())
+    if total == 0:
+        return {}
+
+    return {
+        engine_name: round(weight / total, 4)
+        for engine_name, weight in capped.items()
     }
 
-    total_score = 0
-    total_weight = 0
-    engines_used = []
 
-    for engine_name, weight in weights.items():
+def calculate_weighted_consensus(engines):
+    active_weights = {}
+
+    for engine_name, weight in BASE_WEIGHTS.items():
         engine = engines.get(engine_name, {})
         score = engine.get("score")
 
         if engine.get("status") == "complete" and score is not None:
-            total_score += float(score) * weight
-            total_weight += weight
-            engines_used.append(engine_name)
+            active_weights[engine_name] = weight
 
-    if total_weight == 0:
+    effective_weights = _cap_and_normalize_weights(active_weights)
+
+    if not effective_weights:
         return {
             "score": None,
             "label": "Insufficient Engine Data",
             "status": "pending",
             "engines_used": [],
+            "effective_weights": {},
+            "complete_engine_count": 0,
+            "single_engine_only": True,
         }
 
-    final_score = round(total_score / total_weight, 2)
+    total_score = 0.0
+
+    for engine_name, weight in effective_weights.items():
+        score = engines.get(engine_name, {}).get("score")
+        total_score += float(score) * weight
+
+    final_score = round(total_score, 2)
+    engines_used = list(effective_weights.keys())
 
     prooforigin_engine = engines.get("prooforigin", {})
 
@@ -79,4 +110,7 @@ def calculate_weighted_consensus(engines):
         "status": "complete",
         "engines_used": engines_used,
         "synthetic_hits": synthetic_hits,
+        "effective_weights": effective_weights,
+        "complete_engine_count": len(engines_used),
+        "single_engine_only": len(engines_used) <= 1,
     }
