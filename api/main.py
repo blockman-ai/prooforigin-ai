@@ -29,8 +29,18 @@ from api.feedback import router as feedback_router
 from core.bitcoin_lite_anchor import queue_lite_anchor
 from core.merkle_settlement import create_merkle_batch
 from core.proof_verifier import verify_proof_record, verify_uploaded_file_hash
-from core.bundle_store import load_evidence_bundle
+from core.bundle_store import load_evidence_bundle, verify_bundle_integrity
 from core.public_report import PUBLIC_REPORT_FIELDS, build_public_report
+from core.website_contract import (
+    build_website_contract_from_evidence,
+    with_camel_case_contract,
+)
+from core.protocol import (
+    VERIFIED_SCOPE_BUNDLE_AND_FILE_HASH,
+    VERIFIED_SCOPE_NONE,
+    VERIFIED_SCOPE_PARTIAL,
+)
+from api.response_utils import RESPONSE_SCHEMA_VERSION, LEGACY_DUPLICATE_KEYS_NOTE
 from api.security import (
     read_upload_with_limit,
     require_api_key,
@@ -375,8 +385,35 @@ def get_evidence(
     if "engine_outputs" in evidence:
         evidence["engine_outputs"] = sanitize_external_engines(evidence["engine_outputs"])
 
+    bundle_check = verify_bundle_integrity(evidence)
+    integrity = evidence.get("integrity") or {}
+    has_file_hashes = bool(
+        integrity.get("original_sha256") and integrity.get("analysis_sha256")
+    )
+    if bundle_check["hash_match"] and has_file_hashes:
+        verified_scope = VERIFIED_SCOPE_BUNDLE_AND_FILE_HASH
+    elif bundle_check["hash_match"] or has_file_hashes:
+        verified_scope = VERIFIED_SCOPE_PARTIAL
+    else:
+        verified_scope = VERIFIED_SCOPE_NONE
+
+    contract = build_website_contract_from_evidence(
+        evidence,
+        verified_scope=verified_scope,
+    )
+    contract_camel = with_camel_case_contract(contract)
+    evidence_payload = {**evidence, "contract": contract}
+
     return {
         "success": True,
         "file_id": file_id,
-        "evidence": evidence,
+        "evidence": evidence_payload,
+        **contract,
+        **contract_camel,
+        "truth_verified": False,
+        "response_meta": {
+            "schema_version": RESPONSE_SCHEMA_VERSION,
+            "legacy_duplicate_keys": LEGACY_DUPLICATE_KEYS_NOTE,
+            "website_fields": list(contract.keys()),
+        },
     }

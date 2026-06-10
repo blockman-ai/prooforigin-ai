@@ -1,6 +1,7 @@
 from core.engine_sanitize import sanitize_external_engines
+from core.website_contract import build_website_contract_from_analyze, with_camel_case_contract
 
-RESPONSE_SCHEMA_VERSION = "1.1"
+RESPONSE_SCHEMA_VERSION = "1.2"
 
 LEGACY_DUPLICATE_KEYS_NOTE = (
     "camelCase and snake_case fields are duplicated for backward compatibility; "
@@ -28,9 +29,13 @@ def build_analyze_response(
 ):
     sanitized_engines = sanitize_external_engines(external_engines)
     policy = result.get("policy", {})
+    website_contract = build_website_contract_from_analyze(result, integrity=integrity)
+    website_contract_camel = with_camel_case_contract(website_contract)
 
     response = {
         **result,
+        **website_contract,
+        **website_contract_camel,
         "file_id": file_id,
         "percent": final_consensus.get("score")
         if final_consensus.get("score") is not None
@@ -80,9 +85,11 @@ def build_analyze_response(
         "engineSnapshotHash": result.get("engine_snapshot_hash"),
         "public_label": policy.get("public_label"),
         "publicLabel": policy.get("public_label"),
+        "contract": website_contract,
         "response_meta": {
             "schema_version": RESPONSE_SCHEMA_VERSION,
             "legacy_duplicate_keys": LEGACY_DUPLICATE_KEYS_NOTE,
+            "website_fields": list(website_contract.keys()),
         },
     }
 
