@@ -88,12 +88,23 @@ def _cleanup_temp_paths(temp_paths):
                 pass
 
 
+_DEPLOYMENT_ROUTES = ["health", "analyze", "report", "evidence", "verify"]
+
+
+def _commit_hint():
+    sha = os.environ.get("RAILWAY_GIT_COMMIT_SHA") or os.environ.get("GIT_COMMIT")
+    return sha[:7] if sha else "00e0dfc-or-current"
+
+
 @app.get("/")
 def root():
     return {
         "name": "ProofOrigin AI",
         "status": "running",
         "mission": "Media authenticity research and forensic intelligence.",
+        "health_path": "/health",
+        "version_path": "/version",
+        "deployment_note": "If /health is 404, Railway is serving an older deploy.",
     }
 
 
@@ -102,6 +113,16 @@ def health():
     return {
         "status": "ok",
         "service": "ProofOrigin AI",
+    }
+
+
+@app.get("/version")
+def version():
+    return {
+        "service": "ProofOrigin AI",
+        "status": "running",
+        "commit_hint": _commit_hint(),
+        "routes": _DEPLOYMENT_ROUTES,
     }
 
 
