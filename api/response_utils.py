@@ -36,10 +36,19 @@ def build_analyze_response(
         **result,
         **website_contract,
         **website_contract_camel,
+        "success": True,
         "file_id": file_id,
         "percent": final_consensus.get("score")
         if final_consensus.get("score") is not None
-        else result.get("summary", {}).get("ai_score", 0),
+        else result.get("ai_probability")
+        or result.get("summary", {}).get("ai_score", 0),
+        "ai_probability": result.get("ai_probability"),
+        "manipulation_risk": result.get("manipulation_risk"),
+        "confidence": result.get("confidence"),
+        "signal_summary": result.get("signal_summary"),
+        "forensic_notes": result.get("forensic_notes"),
+        "model_sources_used": result.get("model_sources_used"),
+        "evaluation_mode": result.get("evaluation_mode"),
         "metadata": metadata,
         "originalMetadata": original_metadata,
         "convertedMetadata": converted_metadata,

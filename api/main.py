@@ -10,7 +10,7 @@ from datetime import datetime
 
 from PIL import Image
 
-from core.external_engines import run_sightengine_analysis, run_openai_vision_analysis
+from core.analysis_engine import run_modular_analysis
 from core.consensus_engine import calculate_weighted_consensus
 from core.forensic_context import analyze_forensic_context
 from core.engine_arbitration import analyze_engine_disagreement
@@ -69,6 +69,7 @@ app.add_middleware(
     allow_origins=[
         "https://prooforigin.org",
         "https://www.prooforigin.org",
+        "https://prooforigin-site.vercel.app",
         "http://localhost:3000",
     ],
     allow_credentials=True,
@@ -211,22 +212,54 @@ async def analyze_image(
 
         result = reasoner.analyze_input_data(input_data)
 
+        modular_analysis = run_modular_analysis(
+            image_path=image_path,
+            metadata=metadata,
+            extracted_signals=extracted_signals,
+            vision_findings=vision_findings,
+            reasoner_result=result,
+            run_external=True,
+        )
+
+        enhanced_score = modular_analysis["ai_probability"]
+        if result.get("summary"):
+            result["summary"]["ai_score"] = enhanced_score
+
+        result["ai_probability"] = modular_analysis["ai_probability"]
+        result["manipulation_risk"] = modular_analysis["manipulation_risk"]
+        result["confidence"] = modular_analysis["confidence"]
+        result["signal_summary"] = modular_analysis["signal_summary"]
+        result["forensic_notes"] = modular_analysis["forensic_notes"]
+        result["ml_features"] = modular_analysis["ml_features"]
+        result["model_sources_used"] = modular_analysis["model_sources_used"]
+        result["evaluation_mode"] = modular_analysis["evaluation_mode"]
+        if modular_analysis.get("warnings"):
+            result["warnings"] = list(
+                dict.fromkeys(
+                    (result.get("warnings") or []) + modular_analysis["warnings"]
+                )
+            )
+
         camera_authenticity = analyze_camera_authenticity(result, metadata)
         camera_provenance = classify_camera_provenance(result, metadata)
 
         file_id = str(uuid.uuid4())
 
-        sightengine_result = run_sightengine_analysis(image_path)
-        openai_vision_result = run_openai_vision_analysis(image_path)
-
+        modular_engines = modular_analysis.get("external_engines") or {}
         external_engines = {
             "prooforigin": {
                 "status": "complete",
-                "score": result.get("summary", {}).get("ai_score", 0),
+                "score": enhanced_score,
                 "label": result.get("summary", {}).get("label"),
             },
-            "sightengine": sightengine_result,
-            "openai_vision": openai_vision_result,
+            "sightengine": modular_engines.get(
+                "sightengine",
+                {"status": "unconfigured", "score": None, "label": None},
+            ),
+            "openai_vision": modular_engines.get(
+                "openai_vision",
+                {"status": "unconfigured", "score": None, "label": None},
+            ),
             "openai_reasoning": {
                 "status": "pending",
                 "score": None,
