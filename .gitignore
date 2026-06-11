@@ -224,34 +224,39 @@ data/evidence/*/
 data/training/
 data/realtime_analysis_log.jsonl
 
-# Trained ML artifacts (commit pipeline only, not weights/metrics until real training)
-ml/models/*.pt
-ml/models/*.pth
-ml/models/metrics.json
-ml/datasets/real/*
-!ml/datasets/real/.gitkeep
-ml/datasets/ai/*
-!ml/datasets/ai/.gitkeep
-ml/datasets/real_camera/*
-!ml/datasets/real_camera/.gitkeep
-ml/datasets/ai_generated/*
-!ml/datasets/ai_generated/.gitkeep
-ml/datasets/edited_real/*
-!ml/datasets/edited_real/.gitkeep
-ml/datasets/screenshots/*
-!ml/datasets/screenshots/.gitkeep
-ml/datasets/uncertain/*
-!ml/datasets/uncertain/.gitkeep
-ml/datasets/validation/real_camera/*
-!ml/datasets/validation/real_camera/.gitkeep
-ml/datasets/validation/ai_generated/*
-!ml/datasets/validation/ai_generated/.gitkeep
-ml/datasets/validation/edited_real/*
-!ml/datasets/validation/edited_real/.gitkeep
-ml/datasets/validation/screenshots/*
-!ml/datasets/validation/screenshots/.gitkeep
-ml/datasets/validation/uncertain/*
-!ml/datasets/validation/uncertain/.gitkeep
+# Private dataset vault — raw images and local manifests never in Git
+ml/datasets/**
+!ml/datasets/**/.gitkeep
 ml/datasets/manifest.jsonl
 ml/datasets/manifest.csv
-ml/calibration/calibration_manifest.jsonl
+
+# Trained ML artifacts (weights and local metrics only; not raw data)
+ml/models/*.pt
+ml/models/*.pth
+ml/models/*.json
+!ml/models/.gitkeep
+
+# Calibration manifests with private paths and scores
+ml/calibration/*.jsonl
+!ml/calibration/*.jsonl.example
+!ml/calibration/.gitkeep
+
+# Edge-case samples and evaluation reports (local only)
+ml/edge_cases/*
+!ml/edge_cases/*/
+!ml/edge_cases/*/.gitkeep
+
+# CV v0.2 correction dataset (local only, never commit raw images)
+ml/correction_sets/**
+!ml/correction_sets/**/
+!ml/correction_sets/**/.gitkeep
+ml/correction_sets/**/manifest.jsonl
+
+ml/reports/*
+!ml/reports/.gitkeep
+ml/reports/*.json
+ml/reports/*.md
+
+# Raw training image imports (never commit pixels)
+data/raw/**
+!data/raw/.gitkeep
