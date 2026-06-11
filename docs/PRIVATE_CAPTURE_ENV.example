@@ -1,0 +1,14 @@
+# Private dataset capture import — example environment variables
+# Copy to .env locally. Never commit .env or real credentials.
+
+# Supabase project URL (Settings → API)
+SUPABASE_URL=https://your-project.supabase.co
+
+# Service role key — backend import scripts only; never expose to frontend
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Private storage bucket for website capture uploads (not public)
+PRIVATE_DATASET_BUCKET=po-private-dataset
+
+# Optional: OpenAI Vision used by future capture tool for suggested labels only
+# OPENAI_API_KEY=sk-...
