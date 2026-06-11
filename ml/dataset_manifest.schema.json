@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://prooforigin.ai/schemas/dataset_manifest.json",
+  "title": "ProofOrigin Dataset Manifest Entry",
+  "description": "Metadata record for a single private training image. Raw pixels are never stored in Git.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "file_path",
+    "sha256",
+    "label",
+    "split",
+    "source",
+    "license",
+    "consent_status",
+    "provenance",
+    "generator_or_camera_source",
+    "created_at",
+    "notes"
+  ],
+  "properties": {
+    "file_path": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Absolute or repo-relative path to the image on private storage"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hex digest of raw file bytes"
+    },
+    "label": {
+      "type": "string",
+      "enum": [
+        "real_camera",
+        "ai_generated",
+        "edited_real",
+        "screenshots",
+        "uncertain"
+      ],
+      "description": "Dataset bucket label"
+    },
+    "split": {
+      "type": "string",
+      "enum": ["train", "validation"],
+      "description": "Train or validation holdout split"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Dataset or import origin identifier"
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1,
+      "description": "License or usage-rights reference"
+    },
+    "consent_status": {
+      "type": "string",
+      "enum": ["granted", "pending", "not_applicable", "unknown"],
+      "description": "Whether consent for training use is documented"
+    },
+    "provenance": {
+      "type": "string",
+      "description": "How the asset was sourced, verified, or transformed"
+    },
+    "generator_or_camera_source": {
+      "type": "string",
+      "description": "AI generator name, camera model, or device hint"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when the manifest row was created"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Reviewer or import notes"
+    },
+    "original_filename": {
+      "type": "string",
+      "description": "Filename before bucket normalization (optional)"
+    }
+  }
+}
