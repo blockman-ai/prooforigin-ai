@@ -4,7 +4,7 @@
 import argparse
 import json
 
-from ml.dataset_utils import METRICS_PATH, MODEL_PATH, ensure_dataset_ready
+from ml.dataset_utils import METRICS_PATH, MODEL_PATH, collect_binary_training_samples
 from ml.train_classifier import ProofOriginImageDataset, _compute_metrics, _require_torch, _split_samples
 
 
@@ -12,12 +12,11 @@ def evaluate(val_ratio=0.2, min_per_class=2):
     torch, _, DataLoader, _, _, transforms = _require_torch()
     from ml.inference_classifier import _build_model
 
-    counts = ensure_dataset_ready(min_per_class=min_per_class)
-    samples = []
-    for path in counts["real_images"]:
-        samples.append((path, 0))
-    for path in counts["ai_images"]:
-        samples.append((path, 1))
+    samples, _, _, _ = collect_binary_training_samples(
+        min_per_class=min_per_class,
+        split="train",
+    )
+    samples = [(path, label) for path, label, _bucket in samples]
 
     _, val_samples = _split_samples(samples, val_ratio=val_ratio)
     eval_transform = transforms.Compose(

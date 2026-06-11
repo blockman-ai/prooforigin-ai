@@ -12,9 +12,7 @@ from ml.dataset_utils import (
     METRICS_PATH,
     MODEL_PATH,
     MODELS_DIR,
-    ensure_dataset_ready,
-    list_valid_images,
-    validate_readable_image,
+    collect_binary_training_samples,
 )
 
 
@@ -50,26 +48,12 @@ class ProofOriginImageDataset:
 
 
 def _collect_samples(min_per_class):
-    counts = ensure_dataset_ready(min_per_class=min_per_class)
-    samples = []
-
-    for path in counts["real_images"]:
-        ok, _ = validate_readable_image(path)
-        if ok:
-            samples.append((path, 0))
-
-    for path in counts["ai_images"]:
-        ok, _ = validate_readable_image(path)
-        if ok:
-            samples.append((path, 1))
-
-    real_count = sum(1 for _, label in samples if label == 0)
-    ai_count = sum(1 for _, label in samples if label == 1)
-
-    if real_count < min_per_class or ai_count < min_per_class:
-        raise SystemExit(DATASET_REQUIRED_MESSAGE)
-
-    return samples, real_count, ai_count
+    samples, counts, real_count, ai_count = collect_binary_training_samples(
+        min_per_class=min_per_class,
+        split="train",
+    )
+    binary_samples = [(path, label) for path, label, _bucket in samples]
+    return binary_samples, real_count, ai_count
 
 
 def _split_samples(samples, val_ratio=0.2, seed=42):

@@ -1,6 +1,8 @@
 import os
 
+from core.calibration_strategy import assess_detector_disagreement
 from core.confidence_scoring import build_weighted_analysis_scores
+from core.external_detectors import build_detector_bundle_from_results
 from core.external_engines import run_openai_vision_analysis, run_sightengine_analysis
 from core.forensic_signals import build_forensic_signal_summary
 from core.ml_features import extract_ml_features
@@ -116,9 +118,26 @@ def run_modular_analysis(
         blended = (weighted["ai_probability"] * 0.45) + (cv_result["ai_probability"] * 0.55)
         weighted["ai_probability"] = round(blended, 2)
 
+    detector_bundle = build_detector_bundle_from_results(
+        external_engines=external_engines,
+        cv_result=cv_result,
+    )
+    disagreement = assess_detector_disagreement(detector_bundle)
+    if disagreement.get("disagreement"):
+        weighted["confidence"] = "low"
+        weighted["ai_probability"] = round(
+            (weighted["ai_probability"] * 0.6)
+            + (disagreement.get("average_ai_probability", weighted["ai_probability"]) * 0.4),
+            2,
+        )
+
     warnings = list((reasoner_result or {}).get("warnings") or [])
     if weighted["confidence"] == "low":
         warnings.append("Protocol-scoped evaluation only; confidence is limited.")
+    if disagreement.get("disagreement"):
+        warnings.append(
+            "External detectors disagreed; ProofOrigin avoids a hard fake/real claim."
+        )
 
     model_sources_used = _collect_model_sources(
         external_engines,
@@ -138,7 +157,14 @@ def run_modular_analysis(
     else:
         evaluation_mode = "local_heuristic_fallback"
 
+    if disagreement.get("disagreement"):
+        evaluation_mode = disagreement.get("evaluation_mode_hint") or evaluation_mode
+
     forensic_notes = list(signal_summary["forensic_notes"])
+    if disagreement.get("disagreement"):
+        forensic_notes.append(
+            "Calibration layer detected mixed external signals; treat as cautious evidence."
+        )
     if trained_model_used:
         forensic_notes.append(
             "Trained CV classifier contributed a protocol-scoped estimate (not absolute truth)."
@@ -160,4 +186,6 @@ def run_modular_analysis(
         "external_engines": external_engines,
         "cv_classifier": cv_result,
         "evaluation_mode": evaluation_mode,
+        "detector_comparison": detector_bundle,
+        "calibration_disagreement": disagreement,
     }
