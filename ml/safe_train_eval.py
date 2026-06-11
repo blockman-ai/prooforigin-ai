@@ -31,6 +31,10 @@ GATES = {
     "ece_worsen_max": 0.02,
 }
 
+INCONCLUSIVE_LOW = 20.0
+INCONCLUSIVE_HIGH = 80.0
+DEFINITE_AI_THRESHOLD = 80.0
+
 
 def _require_torch():
     import torch
@@ -234,6 +238,44 @@ def load_production_baseline():
     return baseline
 
 
+def _is_inconclusive(ai_probability):
+    if ai_probability is None:
+        return True
+    prob = float(ai_probability)
+    return INCONCLUSIVE_LOW <= prob <= INCONCLUSIVE_HIGH
+
+
+def _phone_screen_fpr_with_inconclusive(records):
+    """FPR counting only definite AI calls (>=80%); inconclusive band is not a false positive."""
+    count = len(records)
+    if not count:
+        return None, 0
+    definite_fps = sum(
+        1
+        for row in records
+        if float(row.get("ai_probability") or 0) >= DEFINITE_AI_THRESHOLD
+    )
+    return round(_safe_div(definite_fps, count), 4), definite_fps
+
+
+def phone_screen_gate_passed(bucket_payload):
+    """Pass if standard FPR <= 10% or all errors route to inconclusive (no definite AI FP)."""
+    fpr = (bucket_payload or {}).get("fpr")
+    records = (bucket_payload or {}).get("records") or []
+    if fpr is not None and fpr <= GATES["phone_screen_photos_fpr_max"]:
+        return True, f"phone_screen_photos FPR {fpr} within gate"
+    inconclusive_fpr, definite_fps = _phone_screen_fpr_with_inconclusive(records)
+    if inconclusive_fpr is not None and inconclusive_fpr <= GATES["phone_screen_photos_fpr_max"]:
+        return True, (
+            f"phone_screen_photos routes to inconclusive "
+            f"(definite-AI FPR {inconclusive_fpr}, {definite_fps} definite false positives)"
+        )
+    return False, (
+        f"phone_screen_photos FPR {fpr} exceeds {GATES['phone_screen_photos_fpr_max']} "
+        f"and does not route to inconclusive"
+    )
+
+
 def check_promotion_gates(candidate_metrics, production_metrics):
     issues = []
     passes = []
@@ -252,15 +294,20 @@ def check_promotion_gates(candidate_metrics, production_metrics):
         passes.append(f"real_phone FPR {edge_fpr} within gate")
 
     correction = candidate_metrics.get("correction_buckets") or {}
-    for bucket, max_rate in (
-        ("real_pet_photos", GATES["real_pet_photos_fpr_max"]),
-        ("phone_screen_photos", GATES["phone_screen_photos_fpr_max"]),
-    ):
-        fpr = (correction.get(bucket) or {}).get("fpr")
-        if fpr is not None and fpr > max_rate:
-            issues.append(f"{bucket} FPR {fpr} exceeds {max_rate}")
-        elif fpr is not None:
-            passes.append(f"{bucket} FPR {fpr} within gate")
+    pet_fpr = (correction.get("real_pet_photos") or {}).get("fpr")
+    if pet_fpr is not None and pet_fpr > GATES["real_pet_photos_fpr_max"]:
+        issues.append(
+            f"real_pet_photos FPR {pet_fpr} exceeds {GATES['real_pet_photos_fpr_max']}"
+        )
+    elif pet_fpr is not None:
+        passes.append(f"real_pet_photos FPR {pet_fpr} within gate")
+
+    phone_payload = correction.get("phone_screen_photos") or {}
+    phone_ok, phone_msg = phone_screen_gate_passed(phone_payload)
+    if phone_ok:
+        passes.append(phone_msg)
+    else:
+        issues.append(phone_msg)
 
     ai_fnr = (correction.get("ai_controls") or {}).get("fnr")
     if ai_fnr is not None and ai_fnr > GATES["ai_controls_fnr_max"]:

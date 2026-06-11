@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 import requests
 
-from ml.correction_utils import CORRECTION_BUCKETS
+from ml.capture_buckets import CAPTURE_BUCKETS, normalize_capture_bucket
 
 CAPTURES_TABLE = "private_dataset_captures"
 ENV_SUPABASE_URL = "SUPABASE_URL"
@@ -26,7 +26,11 @@ def capture_bucket(record):
 def import_eligible(record):
     if not record.get("approved_for_training"):
         return False
+    if not record.get("ready_for_import"):
+        return False
     if record.get("rejected"):
+        return False
+    if record.get("is_duplicate"):
         return False
     if record.get("keep_for_regression_only"):
         return False
@@ -131,13 +135,8 @@ def download_capture_object(config, storage_path, destination):
 
 
 def normalize_correction_bucket(value):
-    bucket = str(value or "").strip()
-    if bucket not in CORRECTION_BUCKETS:
-        raise ValueError(
-            f"Invalid correction_bucket '{bucket}'. "
-            f"Expected one of: {', '.join(CORRECTION_BUCKETS)}"
-        )
-    return bucket
+    """Backward-compatible alias for capture bucket normalization."""
+    return normalize_capture_bucket(value)
 
 
 def capture_consent_ok(record):
@@ -162,7 +161,7 @@ def capture_review_state(record):
 def audit_capture_records(records):
     sha_index = {}
     duplicate_hashes = []
-    by_bucket = {bucket: 0 for bucket in CORRECTION_BUCKETS}
+    by_bucket = {bucket: 0 for bucket in CAPTURE_BUCKETS}
     by_state = {
         "approved": 0,
         "pending_review": 0,
@@ -185,7 +184,7 @@ def audit_capture_records(records):
             by_state["pending_review"] += 1
 
         bucket = capture_bucket(record)
-        if bucket in CORRECTION_BUCKETS:
+        if bucket in CAPTURE_BUCKETS:
             by_bucket[bucket] += 1
 
         digest = record.get("sha256")

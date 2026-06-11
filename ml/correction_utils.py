@@ -3,17 +3,20 @@
 import json
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-CORRECTION_ROOT = REPO_ROOT / "ml" / "correction_sets" / "v0_2"
-CORRECTION_MANIFEST = CORRECTION_ROOT / "manifest.jsonl"
-
-CORRECTION_BUCKETS = (
-    "real_pet_photos",
-    "phone_screen_photos",
-    "indoor_soft_light",
-    "screenshots",
-    "ai_controls",
+from ml.capture_buckets import (
+    CAPTURE_BUCKET_LABELS,
+    V02_CORRECTION_BUCKETS,
+    V02_CORRECTION_MANIFEST,
+    V02_CORRECTION_ROOT,
+    capture_bucket_dir as _capture_bucket_dir,
+    is_v02_correction_bucket,
 )
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+CORRECTION_ROOT = V02_CORRECTION_ROOT
+CORRECTION_MANIFEST = V02_CORRECTION_MANIFEST
+
+CORRECTION_BUCKETS = V02_CORRECTION_BUCKETS
 
 CORRECTION_TARGETS = {
     "real_pet_photos": 50,
@@ -26,19 +29,13 @@ CORRECTION_TARGETS = {
 # Minimum recommended before retraining (same as targets for v0.2).
 CORRECTION_MINIMUMS = dict(CORRECTION_TARGETS)
 
-BUCKET_LABELS = {
-    "real_pet_photos": "real_camera",
-    "phone_screen_photos": "real_camera",
-    "indoor_soft_light": "real_camera",
-    "screenshots": "real_camera",
-    "ai_controls": "ai_generated",
-}
+BUCKET_LABELS = {bucket: CAPTURE_BUCKET_LABELS[bucket] for bucket in CORRECTION_BUCKETS}
 
 
 def bucket_dir(bucket):
-    if bucket not in CORRECTION_BUCKETS:
-        raise ValueError(f"Unknown correction bucket: {bucket}")
-    return CORRECTION_ROOT / bucket
+    if not is_v02_correction_bucket(bucket):
+        raise ValueError(f"Unknown v0.2 correction bucket: {bucket}")
+    return _capture_bucket_dir(bucket)
 
 
 def total_target():

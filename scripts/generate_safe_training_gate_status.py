@@ -57,6 +57,22 @@ def generate_gate_status_report():
             f"({'met' if data['meets_target'] else 'need ' + str(data['remaining_to_target'])})"
         )
 
+    expansion = audit.get("general_expansion") or {}
+    lines.extend(
+        [
+            "",
+            "## General expansion (not in v0.2 gate)",
+            "",
+            f"- Total images: {expansion.get('totals', {}).get('images', 0)}",
+            f"- Buckets with data: {expansion.get('totals', {}).get('buckets_with_images', 0)}"
+            f"/{expansion.get('totals', {}).get('buckets_total', 0)}",
+            "",
+        ]
+    )
+    for bucket, data in (expansion.get("buckets") or {}).items():
+        if data.get("count"):
+            lines.append(f"- `{bucket}`: {data['count']}")
+
     lines.extend(
         [
             "",

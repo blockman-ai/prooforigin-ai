@@ -14,6 +14,7 @@ if str(SCRIPTS) not in sys.path:
 
 from ml.private_capture_utils import audit_capture_records, fetch_captures, load_capture_config
 from audit_correction_set import audit_correction_set
+from audit_general_expansion import audit_general_expansion
 
 
 def audit_private_dataset_captures():
@@ -45,6 +46,7 @@ def audit_private_dataset_captures():
             report["supabase"]["table"] = "private_dataset_captures"
 
     correction = audit_correction_set()
+    expansion = audit_general_expansion()
     report["correction_progress"] = {
         "buckets": {
             bucket: {
@@ -56,6 +58,14 @@ def audit_private_dataset_captures():
             for bucket, data in correction["buckets"].items()
         },
         "totals": correction["totals"],
+    }
+    report["general_expansion"] = {
+        "buckets": {
+            bucket: {"count": data["count"]}
+            for bucket, data in expansion["buckets"].items()
+        },
+        "totals": expansion["totals"],
+        "retraining": expansion["retraining"],
     }
     report["retraining_gate"] = correction["retraining"]
 

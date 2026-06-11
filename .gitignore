@@ -252,6 +252,11 @@ ml/correction_sets/**
 !ml/correction_sets/**/.gitkeep
 ml/correction_sets/**/manifest.jsonl
 
+# General expansion + private expansion dataset folders (local only)
+ml/datasets/private_expansion/**
+!ml/datasets/private_expansion/**/
+!ml/datasets/private_expansion/**/.gitkeep
+
 ml/reports/*
 !ml/reports/.gitkeep
 ml/reports/*.json
