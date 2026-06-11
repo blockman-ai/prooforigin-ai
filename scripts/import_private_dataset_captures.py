@@ -24,8 +24,10 @@ from ml.correction_utils import (
 from ml.dataset_utils import file_sha256, image_metadata, validate_readable_image
 from ml.private_capture_utils import (
     capture_consent_ok,
+    capture_bucket,
     download_capture_object,
     fetch_captures,
+    import_eligible,
     load_capture_config,
     normalize_correction_bucket,
 )
@@ -53,19 +55,27 @@ def import_private_captures(*, dry_run=False, limit=None):
     skipped = []
     duplicates = []
 
-    eligible = [
-        r
-        for r in records
-        if capture_consent_ok(r) and r.get("storage_path")
-    ]
+    eligible = [r for r in records if import_eligible(r) and r.get("storage_path")]
 
     if limit is not None:
         eligible = eligible[:limit]
 
     for record in eligible:
         capture_id = record.get("id")
+        digest_known = record.get("sha256")
+        if digest_known and digest_known in manifest_index:
+            duplicates.append(
+                {
+                    "id": capture_id,
+                    "sha256": digest_known,
+                    "existing_bucket": manifest_index[digest_known].get("bucket"),
+                    "skipped_before_download": True,
+                }
+            )
+            continue
+
         try:
-            bucket = normalize_correction_bucket(record.get("correction_bucket"))
+            bucket = normalize_correction_bucket(capture_bucket(record))
         except ValueError as exc:
             skipped.append({"id": capture_id, "reason": str(exc)})
             continue

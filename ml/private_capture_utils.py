@@ -14,6 +14,30 @@ ENV_DATASET_BUCKET = "PRIVATE_DATASET_BUCKET"
 DEFAULT_DATASET_BUCKET = "po-private-dataset"
 
 VALID_CONSENT = frozenset({"granted", "owner_provided"})
+BLOCKED_REVIEW_STATUSES = frozenset(
+    {"duplicate", "reject", "rejected", "low_quality", "wrong_bucket"}
+)
+
+
+def capture_bucket(record):
+    return record.get("correction_bucket") or record.get("selected_bucket")
+
+
+def import_eligible(record):
+    if not record.get("approved_for_training"):
+        return False
+    if record.get("rejected"):
+        return False
+    if record.get("keep_for_regression_only"):
+        return False
+    status = str(record.get("review_status") or "").strip().lower()
+    if status in BLOCKED_REVIEW_STATUSES:
+        return False
+    if not capture_consent_ok(record):
+        return False
+    if not capture_bucket(record):
+        return False
+    return True
 
 
 def load_capture_config():
@@ -139,13 +163,28 @@ def audit_capture_records(records):
     sha_index = {}
     duplicate_hashes = []
     by_bucket = {bucket: 0 for bucket in CORRECTION_BUCKETS}
-    by_state = {"approved": 0, "pending_review": 0, "missing_consent": 0}
+    by_state = {
+        "approved": 0,
+        "pending_review": 0,
+        "missing_consent": 0,
+        "rejected": 0,
+        "duplicate": 0,
+    }
 
     for record in records:
-        state = capture_review_state(record)
-        by_state[state] += 1
+        status = str(record.get("review_status") or "").strip().lower()
+        if record.get("rejected") or status in {"reject", "rejected", "low_quality"}:
+            by_state["rejected"] += 1
+        elif status == "duplicate" or record.get("is_duplicate"):
+            by_state["duplicate"] += 1
+        elif capture_review_state(record) == "approved":
+            by_state["approved"] += 1
+        elif capture_review_state(record) == "missing_consent":
+            by_state["missing_consent"] += 1
+        else:
+            by_state["pending_review"] += 1
 
-        bucket = record.get("correction_bucket")
+        bucket = capture_bucket(record)
         if bucket in CORRECTION_BUCKETS:
             by_bucket[bucket] += 1
 
@@ -167,6 +206,8 @@ def audit_capture_records(records):
         "approved_count": by_state["approved"],
         "pending_review_count": by_state["pending_review"],
         "missing_consent_count": by_state["missing_consent"],
+        "rejected_count": by_state["rejected"],
+        "duplicate_count": by_state["duplicate"],
         "duplicate_hashes": duplicate_hashes,
         "count_per_bucket": by_bucket,
     }

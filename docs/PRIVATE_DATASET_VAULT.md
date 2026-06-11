@@ -91,6 +91,8 @@ python scripts/audit_ml_dataset.py
 python scripts/evaluate_edge_cases.py
 python scripts/import_private_dataset_captures.py --dry-run
 python scripts/audit_private_dataset_captures.py
+python scripts/safe_auto_train.py --dry-run
+python scripts/generate_safe_training_gate_status.py
 ```
 
 See also: [ml/README.md](../ml/README.md), [dataset_rules.md](./dataset_rules.md), [PRIVATE_CAPTURE_ENV.example](./PRIVATE_CAPTURE_ENV.example).
@@ -105,8 +107,9 @@ This workflow supports a **future website capture tool** that uploads training c
 2. **Private Supabase bucket** — Raw bytes land in `PRIVATE_DATASET_BUCKET` (default `po-private-dataset`). Bucket is private; no public URLs.
 3. **Suggested label (optional)** — OpenAI Vision may propose a label and correction bucket. Suggestions are stored on the capture row only; they are **not** used for training.
 4. **Human review required** — A reviewer sets `human_verified_label`, `correction_bucket`, and `approved_for_training=true` only after manual approval.
-5. **Backend import** — `scripts/import_private_dataset_captures.py` pulls approved rows locally into `ml/correction_sets/v0_2/{bucket}/`, computes SHA-256, skips duplicates, and appends to the correction manifest.
-6. **Training (later)** — When all correction targets are met, v0.2 retraining uses merged local data. Production deploy ships **weights only**.
+5. **Backend import** — `scripts/import_private_dataset_captures.py` pulls approved rows locally into `ml/correction_sets/v0_2/{bucket}/`, computes SHA-256, skips duplicates, and appends to the correction manifest. Approval does **not** train immediately.
+6. **Safe auto-train gate** — `scripts/safe_auto_train.py` imports approved captures, verifies correction targets, trains a candidate model, evaluates regression gates, and only copies a passing candidate to `prooforigin_cv_classifier_candidate.pt` (manual promotion required).
+7. **Training (later)** — When all correction targets are met and promotion gates pass, v0.2 may replace production weights manually. Production deploy ships **weights only**.
 
 ### Supabase table contract
 
